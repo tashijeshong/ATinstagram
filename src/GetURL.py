@@ -4,12 +4,45 @@ import json
 
 import InstaParser as IP
 
+PAGES = 10
+
 from selenium import webdriver
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.common.keys import Keys
+
+class ParseRequest:
+    def __init__(self, tag, num_posts, end_cursor=None):
+        self.tag = tag
+        self.num_posts = num_posts
+        self.end_cursor = end_cursor
+
+# main function
+def main():
+    hashtag, num_posts, end_cursor = get_input() # get user input
+    request = ParseRequest(hashtag, num_posts, end_cursor) # create request object
+    url = make_url(hashtag, num_posts, end_cursor) # make url
+    print(url) #display url
+
+
+
+    #Open url in default browser
+    # webbrowser.open(url, new=2) # opens in uncontrollable default browser
+    all_tags = selenium(request, PAGES) # opens in controlled browser
+    top_tags = IP.top_tags(all_tags, 0.1)
+    print(top_tags)
+
+    all_tags = IP.sort_tags(all_tags)
+    print(all_tags)
+
+    # Prints results of all_tags to a file ../Data/leavenotrace20pages.txt
+    outputfilename = "../Data/" + request.tag + "." + PAGES + "pages.txt"
+    with open(outputfilename, 'w', encoding="utf8") as f:
+        for tag in all_tags:
+            f.write(str(all_tags[tag]) + "\t" + tag + "\n")
+
 
 # Function that takes a tag and number and makes a URL from it
 def make_url(hashtag, num_posts, end_cursor):
@@ -23,7 +56,7 @@ def make_url(hashtag, num_posts, end_cursor):
 # Also asks for an end cursor if it exists (set to null if no input received)
 def get_input():
     hashtag = input("Enter a hashtag: ")
-    num_posts = input("Enter the number of rows of posts to retrieve (1 row = 3 posts): ")
+    num_posts = input("Enter the number of rows of posts to retrieve (1-50): ")
     end_cursor = input("Enter the end cursor (if applicable): ")
     if end_cursor == "":
         end_cursor = None
@@ -35,18 +68,6 @@ def read_json(json_str):
     json_obj = json.loads(json_str)
     return json_obj
 
-
-# main function
-def main():
-    hashtag, num_posts, end_cursor = get_input() # get user input
-    url = make_url(hashtag, num_posts, end_cursor) # make url
-    print(url) #display url
-
-
-
-    #Open url in default browser
-    # webbrowser.open(url, new=2) # opens in uncontrollable default browser
-    selenium(url) # opens in controlled browser
 
 # Given a properly established browser, logs in to Instagram using the credentials.txt file
 def sel_login(browser):
@@ -81,34 +102,36 @@ def sel_parse(browser, url):
     html = browser.page_source
     html = html[84:-20] # remove first and last part of html to only get JSON contents of page
     json1 = IP.read_json(html)
-    tag = json1["data"]["hashtag"]["name"]
-    num_entries = len(json1['data']['hashtag']['edge_hashtag_to_media']['edges'])
+    # tag = json1["data"]["hashtag"]["name"]
+    # num_entries = len(json1['data']['hashtag']['edge_hashtag_to_media']['edges'])
     end_cursor = json1["data"]["hashtag"]["edge_hashtag_to_media"]["page_info"]["end_cursor"]
     
-    return tag, num_entries, end_cursor
+    return html, end_cursor
 
 
 # function that does everything related to selenium (opens browser, logs in, reads posts under tags, closes browser)
 # might make this return a giant dictionary or datastructure of everything it found
-def selenium(url):
-    numPosts = int(url[url.index("first%22%3A"):-3][11:])
+def selenium(request, num_pages):
+    print("Tag: ", request.tag)
+    print("Number of entries: " + request.num_posts)
     browser = webdriver.Chrome(executable_path="C:/Users/nickh/Downloads/chromedriver_win32/chromedriver.exe")
     sel_login(browser)
     time.sleep(5) # wait for login to complete
-    tag1, num_entries1, end_cursor1 = sel_parse(browser, url)
-    
-    print("Tag: ", tag1)
-    print("Number of entries: " + str(num_entries1))
-    print("End cursor: ", end_cursor1)
 
-    url2 = make_url(tag1, numPosts, end_cursor1)
-    tag2, num_entries2, end_cursor2 = sel_parse(browser, url2)
-    
-    print("Tag: ", tag2)
-    print("Number of entries: " + str(num_entries2))
-    print("End cursor: ", end_cursor2)
+    all_tags = None
+
+    for i in range(num_pages):
+        print("Parsing page " + str((i+1)))
+        url = make_url(request.tag, request.num_posts, request.end_cursor)
+        html, end_cursor = sel_parse(browser, url)
+        request.end_cursor = end_cursor
+        tags = IP.all_tags(html)
+        all_tags = IP.combine_tags(all_tags, tags)
+
 
     browser.quit()
+    # tags = IP.combine_tags(tags1, tags2)
+    return all_tags
 
 # start main
 if __name__ == "__main__":
