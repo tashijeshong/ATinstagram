@@ -1,6 +1,7 @@
 import json
 
 BASE = "../data/" ###CHANGE THIS DEPENDING ON WHERE YOU'RE RUNNING THE PROJECT
+TAGTERMINATORS = [' ', '#', '\n', '\r', '\t', ',', '.', '&', '\'', '\"', ':', ';', '!', '?', '-', '_', '+', '=', '*', '%', '$', '@', '^', '&', '|', '~', '`', '(', ')', '{', '}', '[', ']', '<', '>', '/', '\\', '\u3000']
 
 # This is the main function that runs the program
 def main():
@@ -51,7 +52,7 @@ def parse_tags(descriptions):
                 i = i + 1
                 if i >= len(desc):
                     break
-                while(desc[i] != ' ' and desc[i] != '#' and desc[i] != '\n' and desc[i] != '\r' and desc[i] != '\t' and desc[i] != ',' and desc[i] != '.' and desc[i] != '&'):
+                while(desc[i] not in TAGTERMINATORS):#!= ' ' and desc[i] != '#' and desc[i] != '\n' and desc[i] != '\r' and desc[i] != '\t' and desc[i] != ',' and desc[i] != '.' and desc[i] != '&'):
                     tmpTag += desc[i]
                     i = i + 1
                     if i >= len(desc):
