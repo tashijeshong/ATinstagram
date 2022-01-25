@@ -28,3 +28,6 @@ Get <NUMBER> posts under hashtag <TAG> after <END_CURSOR>:
 	https://www.instagram.com/graphql/query/?query_id=17875800862117404&variables=%7B%22tag_name%22%3A%22<TAG>%22%2C%22first%22%3A<NUMBER>%2C%22after%22%3A%22<END_CURSOR>%22%7D
 
 see: https://github.com/InstaPy/instapy-research/blob/master/api/old_api/README.md
+
+To view any actual post: https://www.instagram.com/p/{shortcode}
+	where {shortcode} is located in the node in the list of edges
