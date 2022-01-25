@@ -38,7 +38,7 @@ def main():
     print(all_tags)
 
     # Prints results of all_tags to a file ../Data/leavenotrace20pages.txt
-    outputfilename = "../Data/" + request.tag + "." + PAGES + "pages.txt"
+    outputfilename = "../Data/" + request.tag + "." + str(PAGES) + "pages.txt"
     with open(outputfilename, 'w', encoding="utf8") as f:
         for tag in all_tags:
             f.write(str(all_tags[tag]) + "\t" + tag + "\n")
