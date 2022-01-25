@@ -17,7 +17,8 @@ def main():
 
     allTags = combine_tags(tag1, tag2) #combines two results into one (assumes that their contents are mutually exclusive, will program a check in later)
     allTags = combine_tags(allTags, tag3)
-    print(top_tags(allTags, 0.25)) #prints the top tags of combined results (top 25%)
+    # print(top_tags(allTags, 0.25)) #prints the top tags of combined results (top 25%)
+    print(sort_tags(allTags))
 
 
 
@@ -50,7 +51,7 @@ def parse_tags(descriptions):
                 i = i + 1
                 if i >= len(desc):
                     break
-                while(desc[i] != ' ' and desc[i] != '#' and desc[i] != '\n' and desc[i] != '\r'):
+                while(desc[i] != ' ' and desc[i] != '#' and desc[i] != '\n' and desc[i] != '\r' and desc[i] != '\t' and desc[i] != ',' and desc[i] != '.' and desc[i] != '&'):
                     tmpTag += desc[i]
                     i = i + 1
                     if i >= len(desc):
@@ -88,6 +89,16 @@ def top_tags(tags, tagFreq=0.1):
     return topTags
 
 
+# This function orders a dictionary of tags by their count in descending order
+def sort_tags(tags):
+    tag_items = sorted(tags.items())
+
+    sortedTags = {}
+    for tuple in tag_items:
+        sortedTags[tuple[0]] = tuple[1]
+    return sortedTags
+
+
 # This function takes a JSON formatted string and returns a dictionary of the most popular tags
 def popular_tags(html, tagFreq):
     parsedJSON = parse_json(html)
@@ -105,6 +116,11 @@ def all_tags(html):
 
 # This function takes two dictionary of tags and their count and returns a dictionary of the two inputs combined, counts are added together
 def combine_tags(tags1, tags2):
+    if tags2 == None:
+        return tags1
+    if tags1 == None:
+        return tags2
+
     ans = {}
     for tag in tags1:
         if tag in ans:
