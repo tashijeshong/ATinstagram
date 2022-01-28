@@ -22,7 +22,7 @@ Steps to use:
 
 API format: 
 Get 3 popular posts of <TAG> with 10 most recent:
-	https://www.instagram.com/explore/tags/<TAG>/?__a=1
+	https://www.instagram.com/explore/tags/<TAG>?__a=1
 
 Get <NUMBER> posts under hashtag <TAG>:
 
