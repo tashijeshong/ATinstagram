@@ -1,18 +1,19 @@
 # ATinstagram
 
 Initial Setup:
-1. Download all python libraries you don't have (use "pip3 install selenium" for that library)
-2. Download Chrome Driver for your version of Chrome, unzip it, and make note of the location of the executable (see here: https://chromedriver.chromium.org/downloads)
-3. Change the line in GetURL.py (src folder) to be your path to the ChromeDriver executable. (Should be line 61 atm).
-4. Fill in the credentials.txt file in the auth folder with your Instagram login information
+1. Download this project as a .zip and extract the contents
+2. Ensure you have installed Google Chrome (version 97*)
+3. Install selenium (use "pip3 install selenium")
+4. Fill in the credentials.txt file in the auth folder with your Instagram login information (credentials for an account created for this project can be made available upon request)
+
+\*If your version of Google Chrome is 96 or 98, visit https://chromedriver.chromium.org/downloads and replace the executable with the one that is compatible with your version of Chrome
 
 
 Steps to use:
-1. Log into Instagram in any browser
-2. Make an API request (details to follow)
-3. Save the contents of the page into a text file (CTRL+A, CTRL+C, CTRL+V)
-4. Place text file into data folder
-5. Run src using textfile name as parameter
+1. Go into the src folder and call "python GetURL.py <hashtag> <# of pages to parse> <end cursor>" \*\*
+2. Check the data folder for the results
+
+\*\*Only the <hashtag> input parameter is required. The default number of pages to parse is 20, and API calls do not require an end cursor to parse recent posts
 
 
 
