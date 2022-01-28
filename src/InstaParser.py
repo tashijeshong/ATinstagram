@@ -8,66 +8,74 @@ def main():
     file1 = BASE + "res1.txt"
     file2 = BASE + "res2.txt"
     file3 = BASE + "res3.txt"
-    html1 = open(file1, 'r', encoding="utf8").read()
-    html2 = open(file2, 'r', encoding="utf8").read()
-    html3 = open(file3, 'r', encoding="utf8").read()
+    json1 = open(file1, 'r', encoding="utf8").read()
+    json2 = open(file2, 'r', encoding="utf8").read()
+    json3 = open(file3, 'r', encoding="utf8").read()
 
-    tag1 = all_tags(html1) #extracts all tags from a file
-    tag2 = all_tags(html2)
-    tag3 = all_tags(html3)
+    tag1 = all_tags(json1) # extracts all tags from a file
+    print(tag1)
+    tag2 = all_tags(json2)
+    tag3 = all_tags(json3)
 
-    allTags = combine_tags(tag1, tag2) #combines two results into one (assumes that their contents are mutually exclusive, will program a check in later)
+    allTags = combine_tags(tag1, tag2) # combines two results into one (assumes that their contents are mutually exclusive, will program a check in later)
     allTags = combine_tags(allTags, tag3)
-    # print(top_tags(allTags, 0.25)) #prints the top tags of combined results (top 25%)
-    print(sort_tags(allTags))
+    # print(top_tags(allTags, 0.25)) # prints the top tags of combined results (top 25%)
+    print(order_tags(allTags))
 
 
 
 
 
-# This function parses JSON-like strings to report all values associated with "text" keys
-# The format of the desired output is as follows: ..."text":"<VALUE>"...
-def parse_json(html):
+# This function parses a JSON formatted string, searches for the description field of all posts
+# and returns an array of all descriptions
+def parse_json(json):
     ans = []
-    json = read_json(html)
+    json = read_json(json)
     for i in range(len(json['data']['hashtag']['edge_hashtag_to_media']['edges'])):
         edge = json['data']['hashtag']['edge_hashtag_to_media']['edges'][i]['node']['edge_media_to_caption']['edges']
-        if len(edge) > 0:
+        if len(edge) > 0: # checks if a caption exists
             ans.append(edge[0]['node']['text'])
         else:
             ans.append("")
 
     return ans
 
-
-# This function parses text for tags, specifically for "#<TAG>"
-def parse_tags(descriptions):
+# This function takes a description and returns an array of cleaned tags
+def parse_tag(desc):
     cleanTags = []
-    for desc in descriptions:
-        tmpTag = ""
-        # add every tag to tmpTag
-        for i in range(len(desc)):
-            if desc[i] == '#':
-                tmpTag += '#'
+    tmpTag = ""
+    # add every tag to tmpTag
+    for i in range(len(desc)):
+        if desc[i] == '#':
+            tmpTag += '#'
+            i = i + 1
+            if i >= len(desc):
+                break
+            while(desc[i] not in TAGTERMINATORS):
+                tmpTag += desc[i]
                 i = i + 1
                 if i >= len(desc):
                     break
-                while(desc[i] not in TAGTERMINATORS):#!= ' ' and desc[i] != '#' and desc[i] != '\n' and desc[i] != '\r' and desc[i] != '\t' and desc[i] != ',' and desc[i] != '.' and desc[i] != '&'):
-                    tmpTag += desc[i]
-                    i = i + 1
-                    if i >= len(desc):
-                        break
-                tmpTag += ' '
-        tags = tmpTag.split(' ')
+            tmpTag += ' '
+    tags = tmpTag.split(' ')
         
-        for tag in tags:
-            if len(tag) > 1:
-                cleanTags.append(tag)
+    for tag in tags:
+        if len(tag) > 1:
+            cleanTags.append(tag)
+    return cleanTags
+
+# This function parses an array of descriptions and outputs an array of tags
+# It also removes all punctuation and whitespace from tags
+def parse_tags(descriptions):
+    cleanTags = []
+    for desc in descriptions:
+        desc_tags = parse_tag(desc)
+        cleanTags.extend(desc_tags)
 
     return cleanTags
 
 
-# This function takes an array of cleaned tags and returns dictionary of each tag and its frequency
+# This function takes an array of cleaned tags and returns dictionary of each tag (key) and its frequency (value)
 def tag_freq(tags):
     tagFreq = {}
     for tag in tags:
@@ -90,8 +98,8 @@ def top_tags(tags, tagFreq=0.1):
     return topTags
 
 
-# This function orders a dictionary of tags by their count in descending order
-def sort_tags(tags):
+# This function alphabetizes a dictionary of tags and their frequencies
+def alpha_tags(tags):
     tag_items = sorted(tags.items())
 
     sortedTags = {}
@@ -99,6 +107,9 @@ def sort_tags(tags):
         sortedTags[tuple[0]] = tuple[1]
     return sortedTags
 
+# This function orders tags by frequency
+def order_tags(tags):
+    return top_tags(tags, 1)
 
 # This function takes a JSON formatted string and returns a dictionary of the most popular tags
 def popular_tags(html, tagFreq):
