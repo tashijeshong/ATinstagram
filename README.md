@@ -8,6 +8,9 @@ Initial Setup:
 
 \*If your version of Google Chrome is 96 or 98, visit https://chromedriver.chromium.org/downloads and replace the executable with the one that is compatible with your version of Chrome
 
+<br/>
+<br/>
+<br/>
 
 Steps to use:
 1. Go into the src folder and call "python GetURL.py <hashtag> <# of pages to parse> <end cursor>" \*\*
@@ -15,9 +18,9 @@ Steps to use:
 
 \*\*Only the <hashtag> input parameter is required. The default number of pages to parse is 20, and API calls do not require an end cursor to parse recent posts
 
-
-
-
+<br/>
+<br/>
+<br/>
 
 API format: 
 Get 3 popular posts of <TAG> with 10 most recent:
