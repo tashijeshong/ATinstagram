@@ -1,8 +1,6 @@
 ###TODO list
-# 1. Make a function in InstaParser.py that doesn't group all posts with a hashtag into a single dictionary
-        # make it preserve the relevant information of each post individually
-# 2. Make a function that sorts the dictionary by the number of likes
-# 3. Make output file names also include some unique element (such as time stamp) to prevent data from being overwritten
+# 1. Make a function that sorts the dictionary by the number of likes
+# 2. Compare 2018/2019 to other years like 2020 and 2021 using #atclassof20XX
 
 import webbrowser
 import time
@@ -28,8 +26,25 @@ class ParseRequest:
         self.num_pages = num_pages
         self.end_cursor = end_cursor
 
+class Post:
+    def __init__(self, id, postCode, likes, caption, tags, timeStamp):
+        self.id = id
+        self.postCode = postCode
+        self.likes = likes
+        self.caption = caption
+        self.tags = tags
+        self.timeStamp = timeStamp
+    
+    def __str__(self):
+        return "Post_ID: " + self.id + " | Post_Code: " + self.postCode + " | Likes: " + str(self.likes) + " | Caption: " + self.caption + " | Tags: " + str(self.tags) + " | Time Stamp: " + str(self.timeStamp)
+    
+    def timeToStr(self):
+        return time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(self.timeStamp))
+
 # main function
 def main():
+    # check if proper number of arguments are given
+    # and set up request object
     if len(sys.argv) == 1:
         print("Invalid number of arguments\n" + ERR_USAGE)
         return -1
@@ -48,25 +63,21 @@ def main():
     elif len(sys.argv) > 4:
         print("Invalid number of arguments\n" + ERR_USAGE)
         return -1
+    
+    # create url from request object
     url = make_url(request.tag, MAX_POSTS_PER_PAGE, request.end_cursor) # make url
     print(url) #display url
 
 
+    # create browser and store results
+    allPosts = selenium(request) # opens in controlled browser
+    print("Number of posts: ", len(allPosts))
 
-    #Open url in default browser
-    # webbrowser.open(url, new=2) # opens in uncontrollable default browser
-    all_tags = selenium(request) # opens in controlled browser
-    top_tags = IP.top_tags(all_tags, 0.1)
-    print(top_tags)
-
-    all_tags = IP.sort_tags(all_tags)
-    # print(all_tags)
-
-    # Prints results of all_tags to a file ../Data/leavenotrace20pages.txt
-    outputfilename = "../Data/" + request.tag + "." + str(request.num_pages) + "pages.txt"
+    # Prints results of all_tags to a file ../Data/<tag>_<num_pages>pages_<unix_time>.txt
+    outputfilename = "../Data/" + request.tag + "_" + str(request.num_pages) + "pages_" + str(int(time.time())) + ".txt"
     with open(outputfilename, 'w', encoding="utf8") as f:
-        for tag in all_tags:
-            f.write(str(all_tags[tag]) + "\t" + tag + "\n")
+        for post in allPosts:
+            f.write(str(post) + "\n")
     return 0
 
 
@@ -113,22 +124,36 @@ def sel_login(browser):
         .send_keys(Keys.RETURN)\
         .perform() # [/1]
 
-# This function parses data from a given URL and returns relevant information
+# This function parses data from a given URL and returns a list of Post objects and the end_cursor for the next page
 def sel_parse(browser, url):
-    browser.get(url)
-    # time.sleep(5) # wait for next page to load
+    browser.get(url) # gets url and automatically waits for page to load
     html = browser.page_source
-    html = html[84:-20] # remove first and last part of html to only get JSON contents of page
-    json1 = IP.read_json(html)
-    # tag = json1["data"]["hashtag"]["name"]
-    # num_entries = len(json1['data']['hashtag']['edge_hashtag_to_media']['edges'])
+    json_str = html[84:-20] # remove first and last part of html to only get JSON contents of page
+    json1 = IP.read_json(json_str)
+    posts_json = json1['data']['hashtag']['edge_hashtag_to_media']['edges']
+    posts = []
+    for i in range(len(posts_json)):
+        id = posts_json[i]['node']['id']
+        shortCode = posts_json[i]['node']['shortcode']
+        likes = posts_json[i]['node']['edge_liked_by']['count']
+        caption = posts_json[i]['node']['edge_media_to_caption']['edges']
+        if len(caption) > 0:
+            caption = caption[0]['node']['text']
+            caption = caption.replace('\n', "<\\br>").replace('\r', "<\\br>")
+        else:
+            caption = ""
+        tags = IP.parse_tag(caption)
+        timeStamp = posts_json[i]['node']['taken_at_timestamp']
+        post = Post(id, shortCode, likes, caption, tags, timeStamp)
+        posts.append(post)
+    
     end_cursor = json1["data"]["hashtag"]["edge_hashtag_to_media"]["page_info"]["end_cursor"]
     
-    return html, end_cursor
+    return posts, end_cursor
 
 
-# function that does everything related to selenium (opens browser, logs in, reads posts under tags, closes browser)
-# might make this return a giant dictionary or datastructure of everything it found
+# Function that does everything related to selenium (opens browser, logs in, reads posts under tags, closes browser)
+# Returns a list of all post objects found under the given tag
 def selenium(request):
     print("Tag: ", request.tag)
     print("Number of entries: " + str(request.num_pages))
@@ -136,20 +161,18 @@ def selenium(request):
     sel_login(browser)
     time.sleep(5) # wait for login to complete
 
-    all_tags = None
+    allPosts = []
 
     for i in range(request.num_pages):
         print("Parsing page " + str((i+1)))
         url = make_url(request.tag, MAX_POSTS_PER_PAGE, request.end_cursor)
-        html, end_cursor = sel_parse(browser, url)
+        posts, end_cursor = sel_parse(browser, url)
         request.end_cursor = end_cursor
-        tags = IP.all_tags(html)
-        all_tags = IP.combine_tags(all_tags, tags)
+        allPosts.extend(posts)
 
 
     browser.quit()
-    # tags = IP.combine_tags(tags1, tags2)
-    return all_tags
+    return allPosts
 
 # start main
 if __name__ == "__main__":
