@@ -1,6 +1,6 @@
 import json
 
-BASE = "../data/" ###CHANGE THIS DEPENDING ON WHERE YOU'RE RUNNING THE PROJECT
+BASE = "../data/"
 TAGTERMINATORS = [' ', '#', '\n', '\r', '\t', ',', '.', '&', '\'', '\"', ':', ';', '!', '?', '-', '_', '+', '=', '*', '%', '$', '@', '^', '&', '|', '~', '`', '(', ')', '{', '}', '[', ']', '<', '>', '/', '\\', '\u3000']
 
 # This is the main function that runs the program
