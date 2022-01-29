@@ -11,14 +11,17 @@ Initial Setup:
 <br/>
 
 Steps to use:
-1. Go into the src folder and call "python CollectData.py \<hashtag\> \<\# of pages to parse\> <end cursor>" \*\*
-2. Check the data folder for the results
-
-<br/>
-1. Go into the src folder and call "python Analyze.py \<hashtag\>"
+1. Go into the src folder and call "python CollectData.py \<hashtag\> \<\# of pages to parse\> \<end cursor\>" \*\*
 2. Check the data folder for the results
 
 \*\*Only the <hashtag> input parameter is required. The default number of pages to parse is 20, and API calls do not require an end cursor to parse recent posts
+	
+<br/>
+	
+To combine multiple output files for the same tag:
+1. Go into the src folder and call "python Analyze.py \<hashtag\>"
+2. Check the data folder for the results
+
 
 <br/>
 <br/>
