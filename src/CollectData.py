@@ -2,16 +2,15 @@
 # 1. Make a function that sorts the dictionary by the number of likes
 # 2. Compare 2018/2019 to other years like 2020 and 2021 using #atclassof20XX
 
-import webbrowser
 import time
-import json
 import sys
 
-import InstaParser as IP
+import TagParser as parser
+import Utilities as util
 
 PAGES = 20
 MAX_POSTS_PER_PAGE = 50
-ERR_USAGE = "Usage:\npython GetURL.py <hashtag>\npython GetURL.py <hashtag> <num_pages>\npython GetURL.py <hashtag> <num_pages> <end_cursor>"
+ERR_USAGE = "Usage:\npython CollectData.py <hashtag>\npython CollectData.py <hashtag> <num_pages>\npython CollectData.py <hashtag> <num_pages> <end_cursor>"
 
 from selenium import webdriver
 from selenium.webdriver.common.action_chains import ActionChains
@@ -27,22 +26,24 @@ class ParseRequest:
         self.end_cursor = end_cursor
 
 class Post:
-    def __init__(self, id, postCode, likes, caption, tags, timeStamp):
+    def __init__(self, id, postCode, likes, timeStamp, tags, caption):
         self.id = id
         self.postCode = postCode
         self.likes = likes
-        self.caption = caption
-        self.tags = tags
         self.timeStamp = timeStamp
+        self.tags = tags
+        self.caption = caption
+        
     
     def __str__(self):
-        return "Post_ID: " + self.id + " | Post_Code: " + self.postCode + " | Likes: " + str(self.likes) + " | Caption: " + self.caption + " | Tags: " + str(self.tags) + " | Time Stamp: " + str(self.timeStamp)
+        return "Post_ID: " + self.id + " | Post_Code: " + self.postCode + " | Likes: " + str(self.likes) + " | Time Stamp: " + str(self.timeStamp) + " | Tags: " + str(self.tags) + " | Caption: " + self.caption 
     
     def timeToStr(self):
         return time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(self.timeStamp))
 
 # main function
 def main():
+    start = time.time()
     # check if proper number of arguments are given
     # and set up request object
     if len(sys.argv) == 1:
@@ -65,7 +66,7 @@ def main():
         return -1
     
     # create url from request object
-    url = make_url(request.tag, MAX_POSTS_PER_PAGE, request.end_cursor) # make url
+    url = util.make_url(request.tag, MAX_POSTS_PER_PAGE, request.end_cursor) # make url
     print(url) #display url
 
 
@@ -78,24 +79,10 @@ def main():
     with open(outputfilename, 'w', encoding="utf8") as f:
         for post in allPosts:
             f.write(str(post) + "\n")
+    
+    end = time.time()
+    print("Time taken: " + str(end - start))
     return 0
-
-
-# Function that takes a tag and number and makes a URL from it
-def make_url(hashtag, num_posts, end_cursor):
-    url = "https://www.instagram.com/graphql/query/?query_id=17875800862117404&variables=%7B%22tag_name%22%3A%22" + hashtag + "%22%2C%22first%22%3A" + str(num_posts)
-    if end_cursor is not None:
-        url += "%2C%22after%22%3A%22" + end_cursor + "%22"
-    url += "%7D"
-    return url
-
-
-
-
-# Function that takes a JSON string as input and returns a JSON object
-def read_json(json_str):
-    json_obj = json.loads(json_str)
-    return json_obj
 
 
 # Given a properly established browser, logs in to Instagram using the credentials.txt file
@@ -129,22 +116,24 @@ def sel_parse(browser, url):
     browser.get(url) # gets url and automatically waits for page to load
     html = browser.page_source
     json_str = html[84:-20] # remove first and last part of html to only get JSON contents of page
-    json1 = IP.read_json(json_str)
+    json1 = util.read_json(json_str)
     posts_json = json1['data']['hashtag']['edge_hashtag_to_media']['edges']
+
     posts = []
     for i in range(len(posts_json)):
         id = posts_json[i]['node']['id']
         shortCode = posts_json[i]['node']['shortcode']
         likes = posts_json[i]['node']['edge_liked_by']['count']
+        timeStamp = posts_json[i]['node']['taken_at_timestamp']
         caption = posts_json[i]['node']['edge_media_to_caption']['edges']
+        tags = []
         if len(caption) > 0:
             caption = caption[0]['node']['text']
+            tags = parser.parse_desc(caption)
             caption = caption.replace('\n', "<\\br>").replace('\r', "<\\br>")
         else:
             caption = ""
-        tags = IP.parse_tag(caption)
-        timeStamp = posts_json[i]['node']['taken_at_timestamp']
-        post = Post(id, shortCode, likes, caption, tags, timeStamp)
+        post = Post(id, shortCode, likes, timeStamp, tags, caption)
         posts.append(post)
     
     end_cursor = json1["data"]["hashtag"]["edge_hashtag_to_media"]["page_info"]["end_cursor"]
@@ -165,13 +154,16 @@ def selenium(request):
 
     for i in range(request.num_pages):
         print("Parsing page " + str((i+1)))
-        url = make_url(request.tag, MAX_POSTS_PER_PAGE, request.end_cursor)
+        url = util.make_url(request.tag, MAX_POSTS_PER_PAGE, request.end_cursor)
         posts, end_cursor = sel_parse(browser, url)
         request.end_cursor = end_cursor
         allPosts.extend(posts)
+        # tags = IP.all_tags(json_str)
+        # all_tags = IP.combine_tags(all_tags, tags)
 
 
     browser.quit()
+    # tags = IP.combine_tags(tags1, tags2)
     return allPosts
 
 # start main
