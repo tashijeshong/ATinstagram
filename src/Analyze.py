@@ -1,11 +1,27 @@
 import glob
 import time
-# from re import search 
+import sys
 
 from CollectData import Post
 import Utilities as util
 
 DATA_ROOT = "..\\data\\"
+ERR_USAGE = "Usage:\npython Analyze.py <hashtag>\npython Analyze.py <hashtag> <num_pages>"
+
+def main():
+    if len(sys.argv) < 2:
+        print("Invalid number of arguments\n" + ERR_USAGE)
+        return -1
+    if len(sys.argv) == 2:
+        tag = sys.argv[1]
+        combine_files(tag)
+        return 0
+    if len(sys.argv) == 3:
+        tag = sys.argv[1]
+        num_pages = int(sys.argv[2])
+        combine_files(tag, num_pages)
+        return 0
+
 
 # Opens a file and returns a list of Post objects
 # One Post object per line, and format is: "Post id: [id] | Post_Code: [shortCode] | Likes: [likes] | Time Stamp: [timeStamp] | Tags: [tags] | Caption: [caption]"
@@ -80,3 +96,6 @@ def combine_files(tag, num_pages=None):
             f.write(str(combined_dict[key]) + "\n")
     print("Results can be found in " + outputFilename) # print the output filename
 
+# start main
+if __name__ == "__main__":
+    main()
