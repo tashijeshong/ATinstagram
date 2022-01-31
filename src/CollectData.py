@@ -10,6 +10,8 @@ import Utilities as util
 
 PAGES = 20
 MAX_POSTS_PER_PAGE = 50
+METADATA_ROOT = "..\\metadata\\"
+DATA_ROOT = "..\\data\\"
 ERR_USAGE = "Usage:\npython CollectData.py <hashtag>\npython CollectData.py <hashtag> <num_pages>\npython CollectData.py <hashtag> <num_pages> <end_cursor>"
 
 from selenium import webdriver
@@ -71,15 +73,24 @@ def main():
 
 
     # create browser and store results
-    allPosts = selenium(request) # opens in controlled browser
+    currTime = int(time.time())
+    allPosts, finalCursor = selenium(request) # opens in controlled browser
     print("Number of posts: ", len(allPosts))
 
     # Prints results of all_tags to a file ../Data/<tag>_<num_pages>pages_<unix_time>.txt
-    outputfilename = "../Data/" + request.tag + "_" + str(request.num_pages) + "pages_" + str(int(time.time())) + ".txt"
-    with open(outputfilename, 'w', encoding="utf8") as f:
+    outputFilename = DATA_ROOT + request.tag + "_" + str(request.num_pages) + "pages_" + str(currTime) + ".txt"
+    with open(outputFilename, 'w', encoding="utf8") as f:
         for post in allPosts:
             f.write(str(post) + "\n")
     
+    # Print metadata to a file ../Data/_bookmark_<tag>_<num_pages>pages_<unix_time>.txt
+    metaFilename = METADATA_ROOT + "_bookmark_" + request.tag + "_" + str(request.num_pages) + "pages_" + str(currTime) + ".txt"
+    with open(metaFilename, 'w', encoding="utf8") as f:
+        f.write("Final Cursor: " + str(finalCursor) + "\n")
+        f.write("Number of posts: " + str(len(allPosts)) + "\n")
+        f.write("Last Post Date: " + str(allPosts[-1].timeStamp) + "\n\n")
+        f.write(allPosts[-1].timeToStr()) # Writes date of last post in allPosts array)
+
     end = time.time()
     print("Time taken: " + str(end - start))
     return 0
@@ -164,7 +175,7 @@ def selenium(request):
 
     browser.quit()
     # tags = IP.combine_tags(tags1, tags2)
-    return allPosts
+    return allPosts, request.end_cursor
 
 # start main
 if __name__ == "__main__":
