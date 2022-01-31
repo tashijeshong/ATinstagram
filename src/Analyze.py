@@ -77,6 +77,7 @@ def combine_dicts(dict1, dict2):
 # An optional parameter 'num_pages' can be passed in to only combine files with a certain number of pages in the filename
 # Not passing in this parameter will have the function also look into output files of this function if they match the tag
 def combine_files(tag, num_pages=None):
+    # Get all files that match the tag and (optionally) number of pages
     searchFor = DATA_ROOT + tag + "_"
     if num_pages is not None:
         searchFor += "*pages_"
@@ -89,12 +90,22 @@ def combine_files(tag, num_pages=None):
         posts = read_posts(filename)
         combined_dict = combine_dicts(combined_dict, posts_to_dict(posts))
 
+    # Make a new list of all filenames but without the prefix DATA_ROOT
+    cleanFilenames = []
+    for filename in filenames:
+        cleanFilenames.append(filename[len(DATA_ROOT):])
+
     # Create output file and copy in the data
     outputFilename = DATA_ROOT + tag + "_" + str(len(combined_dict)) + "combined_" + str(int(time.time())) + ".txt"
     with open(outputFilename, 'w', encoding="utf8") as f:
         for key in combined_dict.keys():
             f.write(str(combined_dict[key]) + "\n")
-    print("Results can be found in " + outputFilename) # print the output filename
+
+    # Print out the filenames that were combined
+    print("Combined " + str(len(cleanFilenames)) + " files:")
+    for filename in cleanFilenames:
+        print(filename)
+    print("\nAll " + str(len(combined_dict.keys())) + " posts can be found in " + outputFilename) # print the output filename
 
 # start main
 if __name__ == "__main__":
