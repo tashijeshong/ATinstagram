@@ -4,15 +4,15 @@
 
 import time
 import sys
+import os
 
-import TagParser as parser
 import Utilities as util
 
 PAGES = 20
 MAX_POSTS_PER_PAGE = 50
 METADATA_ROOT = "..\\metadata\\"
 DATA_ROOT = "..\\data\\"
-ERR_USAGE = "Usage:\npython CollectData.py <hashtag>\npython CollectData.py <hashtag> <num_pages>\npython CollectData.py <hashtag> <num_pages> <end_cursor>"
+ERR_USAGE = "Usage:\npython CollectData.py <hashtag>\npython CollectData.py <hashtag> <numPages>\npython CollectData.py <hashtag> <numPages> <endCursor>"
 
 from selenium import webdriver
 from selenium.webdriver.common.action_chains import ActionChains
@@ -22,23 +22,24 @@ from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.common.keys import Keys
 
 class ParseRequest:
-    def __init__(self, tag, num_pages=PAGES, end_cursor=None):
+    def __init__(self, tag, numPages=PAGES, endCursor=None):
         self.tag = tag
-        self.num_pages = num_pages
-        self.end_cursor = end_cursor
+        self.numPages = numPages
+        self.endCursor = endCursor
 
 class Post:
-    def __init__(self, id, postCode, likes, timeStamp, tags, caption):
-        self.id = id
-        self.postCode = postCode
-        self.likes = likes
-        self.timeStamp = timeStamp
-        self.tags = tags
-        self.caption = caption
+    def __init__(self, id, postCode, ownerId, likes, timeStamp, tags, caption):
+        self.id = str(id)
+        self.postCode = str(postCode)
+        self.ownerId = str(ownerId)
+        self.likes = int(likes)
+        self.timeStamp = int(timeStamp)
+        self.tags = tags # list of strings
+        self.caption = str(caption)
         
     
     def __str__(self):
-        return "Post_ID: " + self.id + " | Post_Code: " + self.postCode + " | Likes: " + str(self.likes) + " | Time Stamp: " + str(self.timeStamp) + " | Tags: " + str(self.tags) + " | Caption: " + self.caption 
+        return "Post_ID: " + self.id + "\t|Post_Code: " + self.postCode + "\t|Owner_ID: " + self.ownerId + "\t|Likes: " + str(self.likes) + "\t|Time_Stamp: " + str(self.timeStamp) + "\t|Tags: " + str(self.tags) + "\t|Caption: " + self.caption 
     
     def timeToStr(self):
         return time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(self.timeStamp))
@@ -48,48 +49,52 @@ def main():
     start = time.time()
     # check if proper number of arguments are given
     # and set up request object
-    if len(sys.argv) == 1:
+    if len(sys.argv) < 2 or len(sys.argv) > 4:
         print("Invalid number of arguments\n" + ERR_USAGE)
         return -1
     
-    request = ParseRequest(sys.argv[1])
+    request = ParseRequest(sys.argv[1].lower()) # default to numPages = PAGES, endCursor = None
     if len(sys.argv) == 3:
-        hashtag = sys.argv[1]
-        num_pages = int(sys.argv[2])
-        end_cursor = None
-        request = ParseRequest(hashtag, num_pages, end_cursor)
+        request.numPages = int(sys.argv[2])
     elif len(sys.argv) == 4:
-        hashtag = sys.argv[1]
-        num_pages = int(sys.argv[2])
-        end_cursor = sys.argv[3]
-        request = ParseRequest(hashtag, num_pages, end_cursor)
-    elif len(sys.argv) > 4:
-        print("Invalid number of arguments\n" + ERR_USAGE)
-        return -1
+        request.numPages = int(sys.argv[2])
+        request.endCursor = sys.argv[3]
     
     # create url from request object
-    url = util.make_url(request.tag, MAX_POSTS_PER_PAGE, request.end_cursor) # make url
+    url = util.make_url(request.tag, MAX_POSTS_PER_PAGE, request.endCursor) # make url
     print(url) #display url
 
 
     # create browser and store results
     currTime = int(time.time())
-    allPosts, finalCursor = selenium(request) # opens in controlled browser
+    allPosts, firstCursor, finalCursor = selenium(request) # opens in controlled browser
     print("Number of posts: ", len(allPosts))
 
-    # Prints results of all_tags to a file ../Data/<tag>_<num_pages>pages_<unix_time>.txt
-    outputFilename = DATA_ROOT + request.tag + "_" + str(request.num_pages) + "pages_" + str(currTime) + ".txt"
+    # Check if folder DATA_ROOT/<tagGroup> exists, if not, create it
+    tagGroup = util.tag_to_folder(request.tag)
+    if not os.path.exists(DATA_ROOT + tagGroup):
+        os.makedirs(DATA_ROOT + tagGroup)
+
+    # Prints results of all_tags to a file <DATA_ROOT>/<tagGroup>/<tag>_<unix_time>ut_<numPages>pages.txt
+    outputFilename = DATA_ROOT + "\\" + tagGroup + "\\" + request.tag + "_" + str(currTime) + "ut_" + str(request.numPages) + "pages.txt"
     with open(outputFilename, 'w', encoding="utf8") as f:
         for post in allPosts:
             f.write(str(post) + "\n")
+        f.close()
     
-    # Print metadata to a file ../Data/_bookmark_<tag>_<num_pages>pages_<unix_time>.txt
-    metaFilename = METADATA_ROOT + "_bookmark_" + request.tag + "_" + str(request.num_pages) + "pages_" + str(currTime) + ".txt"
+    # Check if folder METADATA_ROOT/<tagGroup> exists, if not, create it
+    if not os.path.exists(METADATA_ROOT + tagGroup):
+        os.makedirs(METADATA_ROOT + tagGroup)
+
+    # Print metadata to a file <METADATA_ROOT>/<tagGroup>/<tag>_bookmark_<unix_time>ut_<numPages>pages.txt
+    metaFilename = METADATA_ROOT + "\\" + tagGroup + "\\" + request.tag + "_bookmark_" + str(currTime) + "ut_" + str(request.numPages) + "pages" + ".txt"
     with open(metaFilename, 'w', encoding="utf8") as f:
-        f.write("Final Cursor: " + str(finalCursor) + "\n")
-        f.write("Number of posts: " + str(len(allPosts)) + "\n")
-        f.write("Last Post Date: " + str(allPosts[-1].timeStamp) + "\n\n")
-        f.write(allPosts[-1].timeToStr()) # Writes date of last post in allPosts array)
+        f.write("Number of posts: " + str(len(allPosts)) + "\n\n")
+
+        f.write("First Cursor: " + str(firstCursor) + "\n")
+        f.write("Final Cursor: " + str(finalCursor) + "\n\n")
+
+        f.close()
 
     end = time.time()
     print("Time taken: " + str(end - start))
@@ -103,17 +108,18 @@ def sel_login(browser):
         username = f.readline()
         password = f.readline()
 
-    #create chrome browser
+    # Create Chrome browser
     browser.get("https://www.instagram.com/")
     wait = WebDriverWait(browser, 10) # [1] code adapted from https://stackoverflow.com/questions/54125384/instagram-login-script-with-selenium-not-being-able-to-execute-send-keystest
 
     second_page_flag = wait.until(EC.presence_of_element_located(
-        (By.CLASS_NAME, "KPnG0")))  # util login page appear
+        (By.CLASS_NAME, "KPnG0")))  # wait until login page appears
 
 
-    user = browser.find_element_by_name("username") 
-    passw = browser.find_element_by_name('password')
+    user = browser.find_element_by_name("username") # Find username field
+    passw = browser.find_element_by_name('password') # Find password field
 
+    # Enters username and password
     ActionChains(browser)\
         .move_to_element(user).click()\
         .send_keys(username)\
@@ -122,60 +128,71 @@ def sel_login(browser):
         .send_keys(Keys.RETURN)\
         .perform() # [/1]
 
-# This function parses data from a given URL and returns a list of Post objects and the end_cursor for the next page
+# This function parses data from a given URL and returns a list of Post objects, the end cursor for the next page, and if there is a next page
 def sel_parse(browser, url):
-    browser.get(url) # gets url and automatically waits for page to load
+    browser.get(url) # Gets the url and automatically waits for page to load
     html = browser.page_source
-    json_str = html[84:-20] # remove first and last part of html to only get JSON contents of page
-    json1 = util.read_json(json_str)
-    posts_json = json1['data']['hashtag']['edge_hashtag_to_media']['edges']
+    jsonStr = html[84:-20] # Remove first and last part of HTML to only get JSON contents of page
+    json1 = util.read_json(jsonStr)
+    postsJSON = json1['data']['hashtag']['edge_hashtag_to_media']['edges']
+    hasNext = json1['data']['hashtag']['edge_hashtag_to_media']['page_info']['has_next_page']
 
     posts = []
-    for i in range(len(posts_json)):
-        id = posts_json[i]['node']['id']
-        shortCode = posts_json[i]['node']['shortcode']
-        likes = posts_json[i]['node']['edge_liked_by']['count']
-        timeStamp = posts_json[i]['node']['taken_at_timestamp']
-        caption = posts_json[i]['node']['edge_media_to_caption']['edges']
+    for i in range(len(postsJSON)):
+        id = postsJSON[i]['node']['id']
+        shortCode = postsJSON[i]['node']['shortcode']
+        ownerId = postsJSON[i]['node']['owner']['id']
+        likes = postsJSON[i]['node']['edge_liked_by']['count']
+        timeStamp = postsJSON[i]['node']['taken_at_timestamp']
+        caption = postsJSON[i]['node']['edge_media_to_caption']['edges']
         tags = []
         if len(caption) > 0:
             caption = caption[0]['node']['text']
-            tags = parser.parse_desc(caption)
-            caption = caption.replace('\n', "<\\br>").replace('\r', "<\\br>")
+            tags = util.desc_to_tags(caption)
+            caption = caption.replace('\n', "<br>").replace('\r', "<br>")
         else:
             caption = ""
-        post = Post(id, shortCode, likes, timeStamp, tags, caption)
+        post = Post(id, shortCode, ownerId, likes, timeStamp, tags, caption)
         posts.append(post)
     
-    end_cursor = json1["data"]["hashtag"]["edge_hashtag_to_media"]["page_info"]["end_cursor"]
+    endCursor = json1["data"]["hashtag"]["edge_hashtag_to_media"]["page_info"]["end_cursor"]
     
-    return posts, end_cursor
+    return posts, endCursor, hasNext
 
 
 # Function that does everything related to selenium (opens browser, logs in, reads posts under tags, closes browser)
-# Returns a list of all post objects found under the given tag
+# Returns a list of all post objects found under the given tag, the first endCursor, and the final endCursor
 def selenium(request):
     print("Tag: ", request.tag)
-    print("Number of entries: " + str(request.num_pages))
+    print("Number of entries: " + str(request.numPages))
     browser = webdriver.Chrome(executable_path="../chromedriver.exe")
     sel_login(browser)
     time.sleep(5) # wait for login to complete
 
     allPosts = []
+    firstCursor = "[None]"
+    lastCursor = "[None]"
 
-    for i in range(request.num_pages):
+    for i in range(request.numPages):
         print("Parsing page " + str((i+1)))
-        url = util.make_url(request.tag, MAX_POSTS_PER_PAGE, request.end_cursor)
-        posts, end_cursor = sel_parse(browser, url)
-        request.end_cursor = end_cursor
+        url = util.make_url(request.tag, MAX_POSTS_PER_PAGE, request.endCursor)
+        posts, endCursor, morePages = sel_parse(browser, url)
         allPosts.extend(posts)
-        # tags = IP.all_tags(json_str)
-        # all_tags = IP.combine_tags(all_tags, tags)
+        if morePages == False:
+            print("No more pages")
+            break
+
+        lastCursor = endCursor
+        request.endCursor = endCursor
+        if i == 0:
+            firstCursor = endCursor
+    
+    request.numPages = i + 1
 
 
     browser.quit()
     # tags = IP.combine_tags(tags1, tags2)
-    return allPosts, request.end_cursor
+    return allPosts, firstCursor, lastCursor
 
 # start main
 if __name__ == "__main__":
