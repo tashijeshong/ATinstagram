@@ -1,5 +1,7 @@
 import json
 import glob
+import re
+from langdetect import detect_langs
 
 TAGTERMINATORS = [' ', '#', '\n', '\r', '\t', ',', '.', '&', '\'', '\"', ':', ';', '!', '?', '-', '_', '+', '=', '*', '%', '$', '@', '^', '&', '|', '~', '`', '(', ')', '{', '}', '[', ']', '<', '>', '/', '\\', '\u3000']
 METADATA_ROOT = "..\\metadata\\"
@@ -108,3 +110,80 @@ def combine_dicts(dict1, dict2):
         else:
             combined_dict[key2] = dict2[key2] # add new Post objects
     return combined_dict
+
+def remove_emoji(text):
+    emoji_pattern = re.compile("["
+        u"\U0001F600-\U0001F64F"  # emoticons
+        u"\U0001F300-\U0001F5FF"  # symbols & pictographs
+        u"\U0001F680-\U0001F6FF"  # transport & map symbols
+        u"\U0001F1E0-\U0001F1FF"  # flags (iOS)
+        u"\U0001F1F2-\U0001F1F4"  # Macau flag
+        u"\U0001F1E6-\U0001F1FF"  # flags
+        u"\U0001F600-\U0001F64F"
+        u"\U00002702-\U000027B0"
+        u"\U000024C2-\U0001F251"
+        u"\U0001f926-\U0001f937"
+        u"\U0001F1F2"
+        u"\U0001F1F4"
+        u"\U0001F620"
+        u"\u200d"
+        u"\u2640-\u2642"
+        u"\U00002702-\U000027B0" # Dingbats
+        u"\U000024C2-\U0001F251" # Enclosed Characters
+        u"\U00002122-\U00002B55" # Uncategorized
+        u"\U00003030-\U00003299" # Uncategorized
+        u"\U0001F004-\U0001F0CF"
+        u"\U0001F900-\U0001F9FF" # Unicode 9.0
+        u"\U0001F780-\U0001F7FF" # Geometry shapes Unicode 12.0
+        u"\U0001FA70-\U0001FAFF" # Symbols and Pictographs Extended-A
+        # line 130 to 137 are emojis that I added. It removes all emojis from 500 pages dataset
+        "]+", flags=re.UNICODE)
+
+    refined_text = emoji_pattern.sub(r'', text)
+    return refined_text
+
+special_char = "!$%^&*().,;-?-~@':></[]|0123456789+`" # removed # symbol from the list
+
+class Post:
+    def __init__(self, id, postCode, ownerId, likes, timeStamp, tags, caption):
+        self.id = str(id)
+        self.postCode = str(postCode)
+        self.ownerId = str(ownerId)
+        self.likes = int(likes)
+        self.timeStamp = int(timeStamp)
+        self.tags = tags # list of strings
+        self.caption = str(caption)
+
+# Pass in any caption, and this will return True if it is in English and False if it is in another language
+# !! Returns None if the post has no identifiable language !!
+def is_english(caption):
+    caption = caption.replace("<br>", "").replace("&nbsp;", " ").replace('_', ' ')
+    caption = remove_emoji(caption)
+    for char in special_char:
+        caption = caption.replace(char, "")
+    
+    capSplit = caption.split('#')
+    if len(capSplit[0]) > 15:
+        caption = capSplit[0]
+
+    res = None
+    try:
+        res = detect_langs(caption)[0].lang == "en"
+    except:
+        return None
+    return res
+
+# Function that splits a caption into its constituent words
+def split_caption(caption):
+    # Clean up some weirdness of the caption
+    caption = remove_emoji(caption).lower().encode("ascii", "ignore").decode()
+    caption = caption.replace("<br>", " ").replace("&nbsp;", " ")
+    # Split the caption into words
+    words = caption.split()
+    # Remove punctuation
+    words = [word.strip(',.;:!?)(+-_=*&^][}{|•—….“”"\'~`<>/\\') for word in words]
+    # Remove empty words
+    words = [word for word in words if word]
+    
+    return words # need to remove elements that are just '#'
+                 # potentially replace special characters with spaces (except for single quote "'") first
