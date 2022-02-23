@@ -1,6 +1,8 @@
 import glob
 import time
 import sys
+import os
+import csv
 
 from CollectData import Post
 import Utilities as util
@@ -39,6 +41,9 @@ def main():
         print("Clustering all relevant posts from the data folder...\n")
         cluster_posts(myTag, numClusters)
         return 0
+    if sys.argv[1] == "-i":
+        get_info()
+        return 0
     print("Invalid usage\n" + ERR_USAGE)
     return -1
 
@@ -65,7 +70,6 @@ def read_posts(filename):
 
             post = Post(id, shortCode, ownerId, likes, timeStamp, tags, caption)
             posts.append(post)
-        f.close()
     return posts
 
 # Converts list of Post objects to a dictionary, using the id as a key and the Post object as the value
@@ -99,7 +103,6 @@ def combine_files(myTag):
     with open(outputFilename, 'w', encoding="utf8") as f:
         for key in combined_dict.keys():
             f.write(str(combined_dict[key]) + "\n")
-        f.close()
 
     # Print out the filenames that were combined
     print("Combined " + str(len(cleanFilenames)) + " files:")
@@ -131,6 +134,7 @@ def pull_empty_tags(myTag):
 
 
     # Output all posts with no tags to a file
+    myTag = myTag.replace("*", "X")
     outputFilename = METADATA_ROOT + util.tag_to_folder(myTag) + "\\" + "_empty_" + myTag + "_" + str(len(emptyPosts)) + str(int(time.time())) + ".txt"
     with open(outputFilename, 'w', encoding="utf8") as f:
         for post in emptyPosts:
@@ -211,6 +215,7 @@ def cluster_posts(myTag, numClusters):
     uniqueWords = sorted(uniqueWords.items(), key=lambda x: x[1], reverse=True)
     # Get top 100 words as a list of strings
     top100 = [x[0] for x in uniqueWords[:100]]
+    print(top100)
     
     # Find the clusters
     print("Finding clusters...\n")
@@ -249,6 +254,122 @@ def cluster_posts(myTag, numClusters):
         else:
             print("\nInvalid input, closing program...")
             inputValid = False
+    
+# Function that grabs posts of all tags and puts them into a dictionary
+# Prints stats like number of unique posts
+def get_info():
+    # Get all files from data folder
+    # print("Getting file names...")
+    # dataRes = os.listdir(DATA_ROOT)
+    # tagFolders = []
+    # for r in dataRes:
+    #     if '.' not in r:
+    #         tagFolders.append(DATA_ROOT + r + "\\")
+
+    # filenames = []
+    # for folder in tagFolders:
+    #     files = os.listdir(folder)
+    #     for file in files:
+    #         if ".csv" not in file:
+    #             filenames.append(str(folder) + str(file))
+
+
+    # Loop through each filename, and combine the results into one dictionary
+    print("Combining files and extracting entries...")
+    allDataFilename = DATA_ROOT + "data_thinned.txt"
+    combined_dict = {}
+    allPosts = read_posts(allDataFilename)
+    combined_dict = util.combine_dicts(combined_dict, posts_to_dict(allPosts))
+
+    # Open files DATA_ROOT + "negative.txt" and DATA_ROOT + "positive.txt" and put all adjectives in a list
+    positive = []
+    negative = []
+    with open(DATA_ROOT + "positive.txt", "r", encoding="utf8") as f:
+        for line in f:
+            positive.append(line.strip())
+    with open(DATA_ROOT + "negative.txt", "r", encoding="utf8") as f:
+        for line in f:
+            negative.append(line.strip())
+    
+    adjectives = positive + negative
+
+    adjDict = {}
+
+    # For every post's caption, split the caption into words with util.split_caption(), and then go through each adjective and check if that adjective is in the post's list of words. If it is, increment the adjective's count in the dictionary.
+    print("Counting adjectives...")
+    counter = 0
+    for key in combined_dict.keys():
+        if counter % 1000 == 0:
+            print(str(int(1000 * ((100*counter) / len(combined_dict.keys()))) / 1000) + "%")
+        postWords = util.split_caption(combined_dict[key].caption)
+        for adj in adjectives:
+            if adj in postWords:
+                if adj in adjDict.keys():
+                    adjDict[adj] += 1
+                else:
+                    adjDict[adj] = 1
+        counter += 1
+    
+    # Sort the dictionary by value
+    sortedAdjDict = sorted(adjDict.items(), key=lambda x: x[1], reverse=True)
+
+    # Output all sorted adjectives to a file DATA_ROOT + "sorted_adjectives.txt"
+    with open(DATA_ROOT + "sorted_adjectives.txt", "w", encoding="utf8") as f:
+        for item in sortedAdjDict:
+            f.write(str(item[0]) + ": " + str(item[1]) + "\n")
+    
+    return 0
+
+    # for filename in filenames:
+    #     posts = read_posts(filename)
+    #     # combined_dict = util.combine_dicts(combined_dict, posts_to_dict(posts))
+    #     nonemptyPosts = []
+    #     for post in posts:
+    #         if len(post.tags) > 0:
+    #             nonemptyPosts.append(post)
+    #     combined_dict = util.combine_dicts(combined_dict, posts_to_dict(nonemptyPosts))
+    
+    # # Count the number of unique users
+    # usersDict = {}
+    # for key in combined_dict.keys():
+    #     if combined_dict[key].ownerId in usersDict.keys():
+    #         usersDict[combined_dict[key].ownerId] += 1
+    #     else:
+    #         usersDict[combined_dict[key].ownerId] = 1
+    # print("There are " + str(len(usersDict.keys())) + " unique users")
+
+    # # Sort the users by number of posts
+    # sortedUsers = sorted(usersDict.items(), key=lambda x: x[1], reverse=True)
+    # print("\nTop 100 users:")
+    # for i in range(100):
+    #     print(str(sortedUsers[i][0]) + ": " + str(sortedUsers[i][1]))
+    
+    print("\nCopying over English posts...")
+    counter = 0
+    slim_dict = {}
+    for key in combined_dict.keys():
+        if counter % 1000 == 0:
+            print(str(int(1000 * ((100*counter) / len(combined_dict.keys()))) / 1000) + "%")
+        if util.is_english(combined_dict[key].caption):
+            slim_dict[key] = combined_dict[key]
+        counter += 1
+    
+    # Print out the number of unique posts
+    print("\nThere are " + str(len(combined_dict.keys())) + " unique posts")
+    print("There are " + str(len(slim_dict.keys())) + " unique English posts")
+
+    # Open a file to write all of the data to
+    print("\nWriting data to file...")
+    with open(DATA_ROOT + "data_thinned.txt", "w", encoding="utf8") as f:
+        for key in slim_dict.keys():
+            f.write(str(slim_dict[key]) + "\n")
+    
+    header = ["Post_ID", "Post_Code", "Owner_ID", "Likes", "Time_Stamp", "Tags", "Caption"]
+    with open(DATA_ROOT + "data_thinned.csv", "w", encoding="utf8") as f:
+        writer = csv.writer(f)
+        writer.writerow(header)
+        for key in slim_dict.keys():
+            writer.writerow(slim_dict[key].asArray())
     
 
 # start main
