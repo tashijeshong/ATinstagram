@@ -1,6 +1,6 @@
 ###TODO list
 # 1. Make a function that sorts the dictionary by the number of likes
-# 2. Compare 2018/2019 to other years like 2020 and 2021 using #atclassof20XX
+# 2. Get rid of "&nbsp;" in captions
 
 import time
 import sys
@@ -41,6 +41,9 @@ class Post:
     def __str__(self):
         return "Post_ID: " + self.id + "\t|Post_Code: " + self.postCode + "\t|Owner_ID: " + self.ownerId + "\t|Likes: " + str(self.likes) + "\t|Time_Stamp: " + str(self.timeStamp) + "\t|Tags: " + str(self.tags) + "\t|Caption: " + self.caption 
     
+    def asArray(self):
+        return [self.id, self.postCode, self.ownerId, self.likes, self.timeStamp, self.tags, self.caption]
+
     def timeToStr(self):
         return time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(self.timeStamp))
 
@@ -80,7 +83,6 @@ def main():
     with open(outputFilename, 'w', encoding="utf8") as f:
         for post in allPosts:
             f.write(str(post) + "\n")
-        f.close()
     
     # Check if folder METADATA_ROOT/<tagGroup> exists, if not, create it
     if not os.path.exists(METADATA_ROOT + tagGroup):
@@ -94,7 +96,6 @@ def main():
         f.write("First Cursor: " + str(firstCursor) + "\n")
         f.write("Final Cursor: " + str(finalCursor) + "\n\n")
 
-        f.close()
 
     end = time.time()
     print("Time taken: " + str(end - start))
