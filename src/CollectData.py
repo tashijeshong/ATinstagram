@@ -1,12 +1,12 @@
 ###TODO list
-# 1. Make a function that sorts the dictionary by the number of likes
-# 2. Get rid of "&nbsp;" in captions
+# 1. Get rid of "&nbsp;" in captions
 
 import time
 import sys
 import os
 
 import Utilities as util
+from Utilities import Post
 
 PAGES = 20
 MAX_POSTS_PER_PAGE = 50
@@ -36,7 +36,6 @@ class Post:
         self.timeStamp = int(timeStamp)
         self.tags = tags # list of strings
         self.caption = str(caption)
-        
     
     def __str__(self):
         return "Post_ID: " + self.id + "\t|Post_Code: " + self.postCode + "\t|Owner_ID: " + self.ownerId + "\t|Likes: " + str(self.likes) + "\t|Time_Stamp: " + str(self.timeStamp) + "\t|Tags: " + str(self.tags) + "\t|Caption: " + self.caption 
