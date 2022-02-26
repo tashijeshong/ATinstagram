@@ -1,11 +1,97 @@
 import json
 import glob
 import re
+import time
+import csv
 from langdetect import detect_langs
 
 TAGTERMINATORS = [' ', '#', '\n', '\r', '\t', ',', '.', '&', '\'', '\"', ':', ';', '!', '?', '-', '_', '+', '=', '*', '%', '$', '@', '^', '&', '|', '~', '`', '(', ')', '{', '}', '[', ']', '<', '>', '/', '\\', '\u3000']
 METADATA_ROOT = "..\\metadata\\"
 DATA_ROOT = "..\\data\\"
+
+class Post:
+    def __init__(self, id, postCode, ownerId, likes, timeStamp, tags, caption):
+        self.id = str(id)
+        self.postCode = str(postCode)
+        self.ownerId = str(ownerId)
+        self.likes = int(likes)
+        self.timeStamp = int(timeStamp)
+        self.tags = tags # list of strings
+        self.caption = str(caption)
+    
+    def __str__(self):
+        return "Post_ID: " + self.id + "\t|Post_Code: " + self.postCode + "\t|Owner_ID: " + self.ownerId + "\t|Likes: " + str(self.likes) + "\t|Time_Stamp: " + str(self.timeStamp) + "\t|Tags: " + str(self.tags) + "\t|Caption: " + self.caption 
+    
+    def asArray(self):
+        return [self.id, self.postCode, self.ownerId, self.likes, self.timeStamp, self.tags, self.caption]
+
+    def timeToStr(self):
+        return time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(self.timeStamp))
+
+
+# Opens a file and returns a list of Post objects
+# One Post object per line, and format is: "Post_ID: [id]	|Post_Code: [shortCode]	|Owner_ID: [ownerId]	|Likes: [likes]	|Time_Stamp: [timeStamp]	|Tags: [tags]	|Caption: [caption]"
+def read_posts(filename):
+    extension = filename.split('.')[-1]
+    if extension == "txt":
+        return read_txt(filename)
+    elif extension == "csv":
+        return read_csv(filename)
+    else:
+        exit("Invalid file extension '" + extension + "' from file '" + filename + "'")
+        
+
+# Function that takes a .txt filename and returns a list of post objects
+# Example: read_txt("..\\data\\data_thinned.txt")
+def read_txt(filename):
+    posts = []
+    with open(filename, 'r', encoding="utf8") as f:
+        for line in f:
+            info = line.split("\t|")
+            id = info[0].split("Post_ID:")[1].strip()
+            shortCode = info[1].split("Post_Code:")[1].strip()
+            ownerId = info[2].split("Owner_ID:")[1].strip()
+            likes = int(info[3].split("Likes:")[1].strip())
+            timeStamp = int(info[4].split("Time_Stamp:")[1].strip())
+            tags = strToArr(info[5].split("Tags:")[1].strip())
+            caption = ""
+            for i in range(6, len(info)):
+                caption += info[i]
+                if i != len(info) - 1:
+                    caption += " | "
+            caption = caption.split("Caption:")[1].strip()
+
+            post = Post(id, shortCode, ownerId, likes, timeStamp, tags, caption)
+            posts.append(post)
+    return posts
+
+
+# Function that takes a .csv filename and returns a list of post objects
+# Example: read_csv("..\\data\\data_thinned.csv")
+def read_csv(filename):
+    posts = []
+    with open(filename, 'r', encoding="utf8") as f:
+        reader = csv.reader(f, delimiter=',')
+        # Skip header
+        next(reader)
+        for row in reader:
+            id = row[0]
+            shortCode = row[1]
+            ownerId = row[2]
+            likes = int(row[3])
+            timeStamp = int(row[4])
+            tags = strToArr(row[5])
+            caption = row[6]
+            post = Post(id, shortCode, ownerId, likes, timeStamp, tags, caption)
+            posts.append(post)
+    return posts
+
+# Converts list of Post objects to a dictionary, using the id as a key and the Post object as the value
+def posts_to_dict(posts):
+    post_dict = {}
+    for post in posts:
+        post_dict[post.id] = post
+    return post_dict
 
 # Function that takes a JSON string as input and returns a JSON object
 def read_json(json_str):
@@ -144,15 +230,6 @@ def remove_emoji(text):
 
 special_char = "!$%^&*().,;-?-~@':></[]|0123456789+`" # removed # symbol from the list
 
-class Post:
-    def __init__(self, id, postCode, ownerId, likes, timeStamp, tags, caption):
-        self.id = str(id)
-        self.postCode = str(postCode)
-        self.ownerId = str(ownerId)
-        self.likes = int(likes)
-        self.timeStamp = int(timeStamp)
-        self.tags = tags # list of strings
-        self.caption = str(caption)
 
 # Pass in any caption, and this will return True if it is in English and False if it is in another language
 # !! Returns None if the post has no identifiable language !!
@@ -183,7 +260,7 @@ def split_caption(caption):
     # Remove punctuation
     words = [word.strip(',.;:!?)(+-_=*&^][}{|•—….“”"\'~`<>/\\') for word in words]
     # Remove empty words
-    words = [word for word in words if word]
+    words = [word for word in words if word and word != '#']
     
     return words # need to remove elements that are just '#'
                  # potentially replace special characters with spaces (except for single quote "'") first
