@@ -1,9 +1,97 @@
 import json
 import glob
+import re
+import time
+import csv
+from langdetect import detect_langs
 
 TAGTERMINATORS = [' ', '#', '\n', '\r', '\t', ',', '.', '&', '\'', '\"', ':', ';', '!', '?', '-', '_', '+', '=', '*', '%', '$', '@', '^', '&', '|', '~', '`', '(', ')', '{', '}', '[', ']', '<', '>', '/', '\\', '\u3000']
 METADATA_ROOT = "..\\metadata\\"
 DATA_ROOT = "..\\data\\"
+
+class Post:
+    def __init__(self, id, postCode, ownerId, likes, timeStamp, tags, caption):
+        self.id = str(id)
+        self.postCode = str(postCode)
+        self.ownerId = str(ownerId)
+        self.likes = int(likes)
+        self.timeStamp = int(timeStamp)
+        self.tags = tags # list of strings
+        self.caption = str(caption)
+    
+    def __str__(self):
+        return "Post_ID: " + self.id + "\t|Post_Code: " + self.postCode + "\t|Owner_ID: " + self.ownerId + "\t|Likes: " + str(self.likes) + "\t|Time_Stamp: " + str(self.timeStamp) + "\t|Tags: " + str(self.tags) + "\t|Caption: " + self.caption 
+    
+    def asArray(self):
+        return [self.id, self.postCode, self.ownerId, self.likes, self.timeStamp, self.tags, self.caption]
+
+    def timeToStr(self):
+        return time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(self.timeStamp))
+
+
+# Opens a file and returns a list of Post objects
+# One Post object per line, and format is: "Post_ID: [id]	|Post_Code: [shortCode]	|Owner_ID: [ownerId]	|Likes: [likes]	|Time_Stamp: [timeStamp]	|Tags: [tags]	|Caption: [caption]"
+def read_posts(filename):
+    extension = filename.split('.')[-1]
+    if extension == "txt":
+        return read_txt(filename)
+    elif extension == "csv":
+        return read_csv(filename)
+    else:
+        exit("Invalid file extension '" + extension + "' from file '" + filename + "'")
+        
+
+# Function that takes a .txt filename and returns a list of post objects
+# Example: read_txt("..\\data\\data_thinned.txt")
+def read_txt(filename):
+    posts = []
+    with open(filename, 'r', encoding="utf8") as f:
+        for line in f:
+            info = line.split("\t|")
+            id = info[0].split("Post_ID:")[1].strip()
+            shortCode = info[1].split("Post_Code:")[1].strip()
+            ownerId = info[2].split("Owner_ID:")[1].strip()
+            likes = int(info[3].split("Likes:")[1].strip())
+            timeStamp = int(info[4].split("Time_Stamp:")[1].strip())
+            tags = strToArr(info[5].split("Tags:")[1].strip())
+            caption = ""
+            for i in range(6, len(info)):
+                caption += info[i]
+                if i != len(info) - 1:
+                    caption += " | "
+            caption = caption.split("Caption:")[1].strip()
+
+            post = Post(id, shortCode, ownerId, likes, timeStamp, tags, caption)
+            posts.append(post)
+    return posts
+
+
+# Function that takes a .csv filename and returns a list of post objects
+# Example: read_csv("..\\data\\data_thinned.csv")
+def read_csv(filename):
+    posts = []
+    with open(filename, 'r', encoding="utf8") as f:
+        reader = csv.reader(f, delimiter=',')
+        # Skip header
+        next(reader)
+        for row in reader:
+            id = row[0]
+            shortCode = row[1]
+            ownerId = row[2]
+            likes = int(row[3])
+            timeStamp = int(row[4])
+            tags = strToArr(row[5])
+            caption = row[6]
+            post = Post(id, shortCode, ownerId, likes, timeStamp, tags, caption)
+            posts.append(post)
+    return posts
+
+# Converts list of Post objects to a dictionary, using the id as a key and the Post object as the value
+def posts_to_dict(posts):
+    post_dict = {}
+    for post in posts:
+        post_dict[post.id] = post
+    return post_dict
 
 # Function that takes a JSON string as input and returns a JSON object
 def read_json(json_str):
@@ -108,3 +196,71 @@ def combine_dicts(dict1, dict2):
         else:
             combined_dict[key2] = dict2[key2] # add new Post objects
     return combined_dict
+
+def remove_emoji(text):
+    emoji_pattern = re.compile("["
+        u"\U0001F600-\U0001F64F"  # emoticons
+        u"\U0001F300-\U0001F5FF"  # symbols & pictographs
+        u"\U0001F680-\U0001F6FF"  # transport & map symbols
+        u"\U0001F1E0-\U0001F1FF"  # flags (iOS)
+        u"\U0001F1F2-\U0001F1F4"  # Macau flag
+        u"\U0001F1E6-\U0001F1FF"  # flags
+        u"\U0001F600-\U0001F64F"
+        u"\U00002702-\U000027B0"
+        u"\U000024C2-\U0001F251"
+        u"\U0001f926-\U0001f937"
+        u"\U0001F1F2"
+        u"\U0001F1F4"
+        u"\U0001F620"
+        u"\u200d"
+        u"\u2640-\u2642"
+        u"\U00002702-\U000027B0" # Dingbats
+        u"\U000024C2-\U0001F251" # Enclosed Characters
+        u"\U00002122-\U00002B55" # Uncategorized
+        u"\U00003030-\U00003299" # Uncategorized
+        u"\U0001F004-\U0001F0CF"
+        u"\U0001F900-\U0001F9FF" # Unicode 9.0
+        u"\U0001F780-\U0001F7FF" # Geometry shapes Unicode 12.0
+        u"\U0001FA70-\U0001FAFF" # Symbols and Pictographs Extended-A
+        # line 130 to 137 are emojis that I added. It removes all emojis from 500 pages dataset
+        "]+", flags=re.UNICODE)
+
+    refined_text = emoji_pattern.sub(r'', text)
+    return refined_text
+
+special_char = "!$%^&*().,;-?-~@':></[]|0123456789+`" # removed # symbol from the list
+
+
+# Pass in any caption, and this will return True if it is in English and False if it is in another language
+# !! Returns None if the post has no identifiable language !!
+def is_english(caption):
+    caption = caption.replace("<br>", "").replace("&nbsp;", " ").replace('_', ' ')
+    caption = remove_emoji(caption)
+    for char in special_char:
+        caption = caption.replace(char, "")
+    
+    capSplit = caption.split('#')
+    if len(capSplit[0]) > 15:
+        caption = capSplit[0]
+
+    res = None
+    try:
+        res = detect_langs(caption)[0].lang == "en"
+    except:
+        return None
+    return res
+
+# Function that splits a caption into its constituent words
+def split_caption(caption):
+    # Clean up some weirdness of the caption
+    caption = remove_emoji(caption).lower().encode("ascii", "ignore").decode()
+    caption = caption.replace("<br>", " ").replace("&nbsp;", " ")
+    # Split the caption into words
+    words = caption.split()
+    # Remove punctuation
+    words = [word.strip(',.;:!?)(+-_=*&^][}{|•—….“”"\'~`<>/\\') for word in words]
+    # Remove empty words
+    words = [word for word in words if word and word != '#']
+    
+    return words # need to remove elements that are just '#'
+                 # potentially replace special characters with spaces (except for single quote "'") first
