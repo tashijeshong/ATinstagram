@@ -18,9 +18,10 @@ Steps to use:
 	
 <br/>
 	
-To combine multiple output files for the same tag:
-1. Go into the src folder and call "python Analyze.py \<hashtag\>"
-2. Check the data folder for the results
+To analyze the data:
+1. Add file "data_thinned.csv" into the top level of the /data/ folder
+2. Go into the src folder and call "python Analyze.py"
+3. Check the results folder for the results (if you selected to print results)
 
 
 <br/>
