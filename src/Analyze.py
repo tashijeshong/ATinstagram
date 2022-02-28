@@ -1,4 +1,6 @@
 import glob
+import time
+import os
 
 from CollectData import Post
 import Utilities as util
@@ -7,15 +9,17 @@ import BagOfWords as bag
 METADATA_ROOT = "..\\metadata\\"
 DATA_ROOT = "..\\data\\"
 ALL_DATA = DATA_ROOT + "data_thinned.csv"
+RESULTS_ROOT = "..\\results\\"
 
 class Info:
     def __init__(self):
+        self.currTime = int(time.time())
         self.postDictionary = {} # dictionary of post objects (key is post id, value is post object)
         self.tagsCollected = [] # list of all tags collected (no duplicates, and single value of "[All_Tags]" if all tags are collected)
         self.topTags = {} # dictionary of top tags sorted by descending value (key is tag, value is number of times tag is used)
         self.topAdjectives = {} # dictionary of top adjectives sorted by descending value (key is adjective, value is number of times adjective is used)
         self.topWords = {} # dictionary of top words sorted by descending value (key is word, value is number of times word is used)
-        self.topUsers = {} # [UNUSED]
+        self.topUsers = {} # dictionary of top users sorted by descending value (key is user, value is number of times posts user has made)
         self.numPosts = 0 # number of unique posts collected
         self.numTags = -1 # number of unique tags collected, -1 if not yet calculated
         self.numUsers = -1 # number of unique users collected, -1 if not yet calculated
@@ -28,77 +32,9 @@ class Info:
         self.postDictionary = util.combine_dicts(self.postDictionary, postDict)
         # Update the number of posts
         self.numPosts = len(self.postDictionary)
-
     
     def __str__(self):
-        info = "Current Analysis Information:\n"
-
-        # Print which tags (if any or all) are collected
-        if self.tagsCollected == "[All_Tags]":
-            info += "Tags collected:\t\t\tAll tags collected\n"
-        elif len(self.tagsCollected) == 0:
-            info += "Tags collected:\t\t\tNo tags collected\n"
-        else:
-            info += "Tags collected:\t\t\t" + str(self.tagsCollected) + "\n"
-
-        # Print number of posts collected
-        info += "Number of posts collected:\t" + str(self.numPosts) + "\n"
-
-        # Print number of users collected
-        if self.numUsers != -1:
-            info += "Number of unique users:\t\t" + str(self.numUsers) + "\n"
-        else:
-            info += "Number of unique users:\t\t[Not yet calculated]\n"
-        
-        # Print number of tags collected
-        if self.numTags != -1:
-            info += "Number of unique tags:\t\t" + str(self.numTags) + "\n"
-        else:
-            info += "Number of unique tags:\t\t[Not yet calculated]\n"
-        
-        # Print top 5 tags or fewer if there are less than 5 tags
-        if len(self.topTags) == 0:
-            info += "No top tags stored yet\n"
-        else:
-            numTagsPrinting = min(5, len(self.topTags))
-            info += "\nTop " + str(numTagsPrinting) + " tags:\n"
-            # Print top tags without removing them from the dictionary
-            i = 0
-            for key in self.topTags:
-                if i == numTagsPrinting:
-                    break
-                info += key + ":\t" + str(self.topTags[key]) + "\n"
-                i += 1
-        
-        # Print top 5 adjectives or fewer if there are less than 5 adjectives
-        if len(self.topAdjectives) == 0:
-            info += "\nNo top adjectives stored yet\n"
-        else:
-            numAdjectivesPrinting = min(5, len(self.topAdjectives))
-            info += "\nTop " + str(numAdjectivesPrinting) + " adjectives:\n"
-            # Print top adjectives without removing them from the dictionary
-            i = 0
-            for key in self.topAdjectives.keys():
-                if i == numAdjectivesPrinting:
-                    break
-                info += key + ":\t" + str(self.topAdjectives[key]) + "\n"
-                i += 1
-        
-        # Print top 5 words or fewer if there are less than 5 words
-        if len(self.topWords) == 0:
-            info += "\nNo top words stored yet\n"
-        else:
-            numWordsPrinting = min(5, len(self.topWords))
-            info += "\nTop " + str(numWordsPrinting) + " words:\n"
-            # Print top words without removing them from the dictionary
-            i = 0
-            for key in self.topWords.keys():
-                if i == numWordsPrinting:
-                    break
-                info += key + ":\t" + str(self.topWords[key]) + "\n"
-                i += 1
-
-        return info
+        return get_info(self)
 
 
 def main():
@@ -106,6 +42,7 @@ def main():
     while(True):
         load_data(info)
         run_analysis(info)
+        print_data(info)
 
 
 # Loads data specified by the user into the Info object (or continue without doing so)
@@ -188,7 +125,6 @@ def run_analysis(info):
     elif usrChoice == "1":
         print("Calculating number of unique tags...")
         calculateUniqueTags(info)
-        # print(info.topTags)
         restart = True
     
     elif usrChoice == "2":
@@ -203,6 +139,7 @@ def run_analysis(info):
     
     elif usrChoice == "4":
         print("Calculating top 5 adjectives...")
+        calculateTopAdjectives(info)
         restart = True
     
     elif usrChoice == "c":
@@ -212,6 +149,35 @@ def run_analysis(info):
     if restart:
         run_analysis(info) # restart function
 
+
+def print_data(info):
+    # Setup choices
+    validInput = ["1", "Q", "q", "I", "i", "C", "c"]
+    usrChoice = -1
+    # Ask for user input
+    usrChoice = input("\n[1]Print all data\n[Q]uit   | [I]nfo   | [C]ontinue\nUser Input: ").lower()
+    restart = False
+    if usrChoice not in validInput:
+        print("Invalid input. Try again.")
+        restart = True
+
+    elif usrChoice == "q":
+        exit("Safely exiting...")
+
+    elif usrChoice == "i":
+        print("\n" + str(info) + "\n")
+        restart = True
+
+    elif usrChoice == "1":
+        print_info(info)
+        restart = True
+    
+    elif usrChoice == "c":
+        print("Continuing...")
+        return
+    
+    if restart:
+        print_data(info) # restart function
 
 # Calculates the number of each unique tag in the posts in the Info object
 def calculateUniqueTags(info):
@@ -247,8 +213,15 @@ def calculateUniqueUsers(info):
     # Calculate number of unique users
     info.numUsers = len(info.topUsers)
 
+    # Sort users by count
+    sortedUsers = sorted(info.topUsers.items(), key=lambda x: x[1], reverse=True)
+    info.topUsers = {}
+    for user in sortedUsers:
+        info.topUsers[user[0]] = user[1]
+
 
 # Calculates the top words in the posts in the Info object
+# Word count is calculated by the number of times a word is used (not the number of posts it is used in)
 def calculateTopWords(info):
     # Gets all common words
     commonWords = []
@@ -273,6 +246,148 @@ def calculateTopWords(info):
     for word in sortedWords:
         info.topWords[word[0]] = word[1]
 
+# Calculates the top adjectives in the posts in the Info object
+# Adjective count is calculated by the number of posts that use it
+def calculateTopAdjectives(info):
+    # Gets all adjectives
+    adjectives = []
+    THRESHHOLD = 0 # Threshold for how many times a word must appear in order to be considered an adjective
+    with open(DATA_ROOT + "sorted_adjectives.txt", "r") as f:
+        for line in f:
+            # Each line is of format: "[adjective]: [count]"
+            adjCount = line.split(":")
+            adj = adjCount[0].strip()
+            count = int(adjCount[1].strip())
+            if count > THRESHHOLD:
+                adjectives.append(adj)
+
+
+    # Get all words from all posts and record the counts of each relevant adjective
+    for key in info.postDictionary:
+        post = info.postDictionary[key]
+        words = util.split_caption(post.caption)
+        for adj in adjectives:
+            if adj in words:
+                if adj not in info.topAdjectives:
+                    info.topAdjectives[adj] = 1
+                else:
+                    info.topAdjectives[adj] += 1
+    
+    # Sort adjectives by count
+    sortedWords = sorted(info.topAdjectives.items(), key=lambda x: x[1], reverse=True)
+    info.topAdjectives = {}
+    for word in sortedWords:
+        info.topAdjectives[word[0]] = word[1]
+
+def get_info(infoObj):
+    info = "Current Analysis Information:\n"
+
+    # Print which tags (if any or all) are collected
+    if infoObj.tagsCollected == "[All_Tags]":
+        info += "Tags collected:\t\t\tAll tags collected\n"
+    elif len(infoObj.tagsCollected) == 0:
+        info += "Tags collected:\t\t\tNo tags collected\n"
+    else:
+        info += "Tags collected:\t\t\t" + str(infoObj.tagsCollected) + "\n"
+
+    # Print number of posts collected
+    info += "Number of posts collected:\t" + str(infoObj.numPosts) + "\n"
+
+    # Print number of users collected
+    if infoObj.numUsers != -1:
+        info += "Number of unique users:\t\t" + str(infoObj.numUsers) + "\n"
+    else:
+        info += "Number of unique users:\t\t[Not yet calculated]\n"
+        
+    # Print number of tags collected
+    if infoObj.numTags != -1:
+        info += "Number of unique tags:\t\t" + str(infoObj.numTags) + "\n"
+    else:
+        info += "Number of unique tags:\t\t[Not yet calculated]\n"
+    
+    # Print top 5 tags or fewer if there are less than 5 tags
+    if len(infoObj.topTags) == 0:
+        info += "No top tags stored yet\n"
+    else:
+        numTagsPrinting = min(5, len(infoObj.topTags))
+        info += "\nTop " + str(numTagsPrinting) + " tags:\n"
+        # Print top tags without removing them from the dictionary
+        i = 0
+        for key in infoObj.topTags:
+            if i == numTagsPrinting:
+                break
+            info += key + ":\t" + str(infoObj.topTags[key]) + "\n"
+            i += 1
+        
+    # Print top 5 adjectives or fewer if there are less than 5 adjectives
+    if len(infoObj.topAdjectives) == 0:
+        info += "\nNo top adjectives stored yet\n"
+    else:
+        numAdjectivesPrinting = min(5, len(infoObj.topAdjectives))
+        info += "\nTop " + str(numAdjectivesPrinting) + " adjectives:\n"
+        # Print top adjectives without removing them from the dictionary
+        i = 0
+        for key in infoObj.topAdjectives.keys():
+            if i == numAdjectivesPrinting:
+                break
+            info += key + ":\t" + str(infoObj.topAdjectives[key]) + "\n"
+            i += 1
+        
+    # Print top 5 words or fewer if there are less than 5 words
+    if len(infoObj.topWords) == 0:
+        info += "\nNo top words stored yet\n"
+    else:
+        numWordsPrinting = min(5, len(infoObj.topWords))
+        info += "\nTop " + str(numWordsPrinting) + " words:\n"
+        # Print top words without removing them from the dictionary
+        i = 0
+        for key in infoObj.topWords.keys():
+            if i == numWordsPrinting:
+                break
+            info += key + ":\t" + str(infoObj.topWords[key]) + "\n"
+            i += 1
+
+    return info
+
+def print_info(infoObj):
+    # Make header for a metadata file
+    metaInfo = get_info(infoObj)
+
+    # Make a new folder for the results in the results folder
+    newFolderPath = RESULTS_ROOT + "Results_" + str(infoObj.currTime)
+    # check if path exists
+    if not os.path.exists(newFolderPath):
+        os.makedirs(newFolderPath)
+    newFolderPath += "\\"
+
+    # Write metadata to file
+    with open(newFolderPath + "metadata.txt", "w", encoding="utf8") as f:
+        f.write(metaInfo)
+    
+    # If the number of users is calculated, print the user ids and counts
+    if infoObj.numUsers != -1:
+        with open(newFolderPath + "user_ids.txt", "w", encoding="utf8") as f:
+            for user in infoObj.topUsers:
+                f.write(str(user) + ": " + str(infoObj.topUsers[user]) + "\n")
+
+    # If the number of tags is calculated, print the tags and their count
+    if infoObj.numTags != -1:
+        with open(newFolderPath + "tags.txt", "w", encoding="utf8") as f:
+            for tag in infoObj.topTags:
+                f.write(str(tag) + ": " + str(infoObj.topTags[tag]) + "\n")
+    
+    # If the number of adjectives is calculated, print the adjectives and their count
+    if len(infoObj.topAdjectives) != 0:
+        with open(newFolderPath + "adjectives.txt", "w", encoding="utf8") as f:
+            for adj in infoObj.topAdjectives.keys():
+                f.write(adj + ": " + str(infoObj.topAdjectives[adj]) + "\n")
+
+    # If the number of words is calculated, print the words and their count
+    if len(infoObj.topWords) != 0:
+        with open(newFolderPath + "words.txt", "w", encoding="utf8") as f:
+            for word in infoObj.topWords.keys():
+                f.write(str(word) + ": " + str(infoObj.topWords[word]) + "\n")
+                    
 
 # start main
 if __name__ == "__main__":
