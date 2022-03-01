@@ -1,15 +1,21 @@
 import glob
 import time
 import os
+import random #soon to be unused
+import csv
+import json
+import requests
 
 from CollectData import Post
 import Utilities as util
 import BagOfWords as bag
 
-METADATA_ROOT = "..\\metadata\\"
-DATA_ROOT = "..\\data\\"
+METADATA_ROOT = "../metadata/"
+DATA_ROOT = "../data/"
 ALL_DATA = DATA_ROOT + "data_thinned.csv"
-RESULTS_ROOT = "..\\results\\"
+RESULTS_ROOT = "../results/"
+
+TEMP_API_KEY = "ZWUwZDFkNGMtMmE1ZS00NGJlLTkzMTgtZDFjYTFmYjViYmI5"
 
 class Info:
     def __init__(self):
@@ -23,7 +29,12 @@ class Info:
         self.numPosts = 0 # number of unique posts collected
         self.numTags = -1 # number of unique tags collected, -1 if not yet calculated
         self.numUsers = -1 # number of unique users collected, -1 if not yet calculated
-    
+
+        self.sentimentCalculated = False
+        self.posPostIds = [] # list of post ids of posts with positive sentiment
+        self.negPostIds = [] # list of post ids of posts with negative sentiment
+        self.neutralPostIds = [] # list of post ids of posts with neutral sentiment
+
     # Add a list of posts to the Info object and update the number of posts
     def add_posts(self, posts):
         # Make the new post list into a dictionary
@@ -50,7 +61,7 @@ def main():
 # Gives option to print out the data or quit
 def load_data(info):
     # Setup choices
-    validInput = ["1", "2", "Q", "q", "I", "i", "C", "c"]
+    validInput = ["1", "2", "q", "i", "c"]
     usrChoice = -1
     # Ask for user input
     usrChoice = input("[1]Load all data\n[2]Load hashtag\n[Q]uit   | [I]nfo   | [C]ontinue\nUser Input: ").lower()
@@ -77,16 +88,19 @@ def load_data(info):
     elif usrChoice == "2":
         hashtag = input("Enter hashtag: ")
         print("Loading data for hashtag '" + hashtag + "'...")
-        folder = util.tag_to_folder(hashtag)
-        # use glob to get the csv file in the folder
-        csvFile = glob.glob(DATA_ROOT + folder + "\\*.csv")
+        posts = util.read_posts(ALL_DATA)
+        selectedPosts = []
+        myHashtag = "#" + hashtag.lower()
+        for post in posts:
+            lowerTags = [tag.lower() for tag in post.tags]
+            if myHashtag in lowerTags:
+                selectedPosts.append(post)
 
-        if len(csvFile) == 0:
+        if len(selectedPosts) == 0:
             print("No data found for hashtag '" + hashtag + "'.")
         
         else:
-            posts = util.read_posts(csvFile[0])
-            info.add_posts(posts)
+            info.add_posts(selectedPosts)
             info.tagsCollected.append(hashtag)
             print(str(info.numPosts) + " posts loaded for hashtag '" + hashtag + "'.\n\n")
         
@@ -106,10 +120,10 @@ def load_data(info):
 # Gives option to print out the data or quit
 def run_analysis(info):
     # Setup choices
-    validInput = ["1", "2", "3", "4", "Q", "q", "I", "i", "C", "c"]
+    validInput = ["1", "2", "3", "4", "5", "q", "i","c"]
     usrChoice = -1
     # Ask for user input
-    usrChoice = input("\n[1]Count number of unique tags\n[2]Count number of unique users\n[3]Calculate top 5 words\n[4]Calculate top 5 adjectives\n[Q]uit   | [I]nfo   | [C]ontinue\nUser Input: ").lower()
+    usrChoice = input("\n[1]Count number of unique tags\n[2]Count number of unique users\n[3]Calculate top 5 words\n[4]Calculate top 5 adjectives\n[5]Calculate sentiment\n[Q]uit   | [I]nfo   | [C]ontinue\nUser Input: ").lower()
     restart = False
     if usrChoice not in validInput:
         print("Invalid input. Try again.")
@@ -142,6 +156,11 @@ def run_analysis(info):
         calculateTopAdjectives(info)
         restart = True
     
+    elif usrChoice == "5":
+        print("Calculating sentiment...")
+        calculateSentiment(info)
+        restart = True
+    
     elif usrChoice == "c":
         print("Continuing...")
         return
@@ -152,7 +171,7 @@ def run_analysis(info):
 
 def print_data(info):
     # Setup choices
-    validInput = ["1", "Q", "q", "I", "i", "C", "c"]
+    validInput = ["1", "q", "i", "c"]
     usrChoice = -1
     # Ask for user input
     usrChoice = input("\n[1]Print all data\n[Q]uit   | [I]nfo   | [C]ontinue\nUser Input: ").lower()
@@ -279,6 +298,44 @@ def calculateTopAdjectives(info):
     for word in sortedWords:
         info.topAdjectives[word[0]] = word[1]
 
+# Calculates the sentiment of the posts in the Info object
+# Stores post ids in info.posPostIds and info.negPostIds
+def calculateSentiment(info):
+    # Get positive and negative adjectives
+    posAdjs = []
+    negAdjs = []
+    with open(DATA_ROOT + "positive.txt", "r") as f:
+        for line in f:
+            posAdjs.append(line.strip())
+    with open(DATA_ROOT + "negative.txt", "r") as f:
+        for line in f:
+            negAdjs.append(line.strip())
+    
+    # Check all post captions for positive and negative adjectives
+    # If a post contains more positive adjectives than negative, it is considered positive
+    info.posPostIds = []
+    info.negPostIds = []
+    info.neutralPostIds = []
+    for key in info.postDictionary:
+        post = info.postDictionary[key]
+        words = util.split_caption(post.caption)
+        posCount = 0
+        negCount = 0
+        for word in words:
+            if word in posAdjs:
+                posCount += 1
+            if word in negAdjs:
+                negCount += 1
+        if posCount > negCount:
+            info.posPostIds.append(key)
+        elif negCount > posCount:
+            info.negPostIds.append(key)
+        else:
+            info.neutralPostIds.append(key)
+    
+    info.sentimentCalculated = True
+            
+
 def get_info(infoObj):
     info = "Current Analysis Information:\n"
 
@@ -305,6 +362,24 @@ def get_info(infoObj):
     else:
         info += "Number of unique tags:\t\t[Not yet calculated]\n"
     
+    # Print number of positive posts
+    if infoObj.sentimentCalculated:
+        info += "Number of positive posts:\t" + str(len(infoObj.posPostIds)) + "\n"
+    else:
+        info += "Number of positive posts:\t[Not yet calculated]\n"
+    
+    # Print number of negative posts
+    if infoObj.sentimentCalculated:
+        info += "Number of negative posts:\t" + str(len(infoObj.negPostIds)) + "\n"
+    else:
+        info += "Number of negative posts:\t[Not yet calculated]\n"
+    
+    # Print number of neutral posts
+    if infoObj.sentimentCalculated:
+        info += "Number of neutral posts:\t" + str(len(infoObj.neutralPostIds)) + "\n"
+    else:
+        info += "Number of neutral posts:\t[Not yet calculated]\n"
+
     # Print top 5 tags or fewer if there are less than 5 tags
     if len(infoObj.topTags) == 0:
         info += "No top tags stored yet\n"
@@ -358,7 +433,7 @@ def print_info(infoObj):
     # check if path exists
     if not os.path.exists(newFolderPath):
         os.makedirs(newFolderPath)
-    newFolderPath += "\\"
+    newFolderPath += "/"
 
     # Write metadata to file
     with open(newFolderPath + "metadata.txt", "w", encoding="utf8") as f:
@@ -387,7 +462,27 @@ def print_info(infoObj):
         with open(newFolderPath + "words.txt", "w", encoding="utf8") as f:
             for word in infoObj.topWords.keys():
                 f.write(str(word) + ": " + str(infoObj.topWords[word]) + "\n")
-                    
+
+    # If the pos/neg posts are calculated, print the posts to .csv files
+    if infoObj.sentimentCalculated:
+        header = ["Post_ID", "Post_Code", "Owner_ID", "Likes", "Time_Stamp", "Tags", "Caption"]
+        with open(newFolderPath + "positive_posts.csv", "w", encoding="utf8", newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow(header)
+            for post in infoObj.posPostIds:
+                writer.writerow(infoObj.postDictionary[post].asArray())
+        
+        with open(newFolderPath + "negative_posts.csv", "w", encoding="utf8", newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow(header)
+            for post in infoObj.negPostIds:
+                writer.writerow(infoObj.postDictionary[post].asArray())
+        
+        with open(newFolderPath + "neutral_posts.csv", "w", encoding="utf8", newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow(header)
+            for post in infoObj.neutralPostIds:
+                writer.writerow(infoObj.postDictionary[post].asArray())
 
 # start main
 if __name__ == "__main__":
