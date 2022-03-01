@@ -1,10 +1,6 @@
-import glob
 import time
 import os
-import random #soon to be unused
 import csv
-import json
-import requests
 
 from CollectData import Post
 import Utilities as util
@@ -14,6 +10,7 @@ METADATA_ROOT = "../metadata/"
 DATA_ROOT = "../data/"
 ALL_DATA = DATA_ROOT + "data_thinned.csv"
 RESULTS_ROOT = "../results/"
+
 
 class Info:
     def __init__(self):
