@@ -15,8 +15,6 @@ DATA_ROOT = "../data/"
 ALL_DATA = DATA_ROOT + "data_thinned.csv"
 RESULTS_ROOT = "../results/"
 
-TEMP_API_KEY = "ZWUwZDFkNGMtMmE1ZS00NGJlLTkzMTgtZDFjYTFmYjViYmI5"
-
 class Info:
     def __init__(self):
         self.currTime = int(time.time())
