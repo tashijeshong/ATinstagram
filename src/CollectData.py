@@ -36,6 +36,15 @@ class Post:
         self.timeStamp = int(timeStamp)
         self.tags = tags # list of strings
         self.caption = str(caption)
+
+class GeoPost:
+    def __init__(self,id, name, address, city, lng, lat):
+        self.id = str(id)
+        self.name = str(name)
+        self.address = str(address)
+        self.city = str(city)
+        self.lng = int(lng)
+        self.lat = int(lat)
     
     def __str__(self):
         return "Post_ID: " + self.id + "\t|Post_Code: " + self.postCode + "\t|Owner_ID: " + self.ownerId + "\t|Likes: " + str(self.likes) + "\t|Time_Stamp: " + str(self.timeStamp) + "\t|Tags: " + str(self.tags) + "\t|Caption: " + self.caption 
