@@ -27,39 +27,21 @@ class ParseRequest:
         self.numPages = numPages
         self.endCursor = endCursor
 
-class Post:
-    def __init__(self, id, postCode, ownerId, likes, timeStamp, tags, caption):
-        self.id = str(id)
-        self.postCode = str(postCode)
-        self.ownerId = str(ownerId)
-        self.likes = int(likes)
-        self.timeStamp = int(timeStamp)
-        self.tags = tags # list of strings
-        self.caption = str(caption)
-    
-    def __str__(self):
-        return "Post_ID: " + self.id + "\t|Post_Code: " + self.postCode + "\t|Owner_ID: " + self.ownerId + "\t|Likes: " + str(self.likes) + "\t|Time_Stamp: " + str(self.timeStamp) + "\t|Tags: " + str(self.tags) + "\t|Caption: " + self.caption 
-    
-    def asArray(self):
-        return [self.id, self.postCode, self.ownerId, self.likes, self.timeStamp, self.tags, self.caption]
-
-    def timeToStr(self):
-        return time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(self.timeStamp))
-
 
 class GeoPost:
-    def __init__(self,id, postCode, name, address, city, lng, lat):
+    def __init__(self, id, postCode, name, shortName, placeID, address, city, lng, lat):
         self.id = str(id)
         self.postCode = str(postCode)
-        postCodeVar = str(postCode)
         self.name = str(name)
+        self.shortName = str(shortName)
+        self.placeID = int(placeID)
         self.address = str(address)
         self.city = str(city)
         self.lng = int(lng)
         self.lat = int(lat)
 
     def __str__(self):
-        return "Post_ID: " + self.id + "\t|Post_Code: " + self.postCode + "\t|Post_Name: " + self.name + "\t|Address: " + self.address + "\t|City: " + str(self.city) + "\t|Longitude: " + str(self.lng) + "\t|Latitude: " + str(self.lat)
+        return "Post_ID: " + self.id + "\t|Post_Code: " + self.postCode + "\t|Place_Name: " + self.name + "\t|Short_Name: " + self.shortName + "\t|Place_ID: " + str(self.placeID) + "\t|Address: " + self.address + "\t|City: " + str(self.city) + "\t|Longitude: " + str(self.lng) + "\t|Latitude: " + str(self.lat)
     
     def asArray(self):
         return [self.id, self.name, self.address, self.city, self.lng, self.lat]
@@ -91,8 +73,8 @@ def main():
 
     # Check if folder DATA_ROOT/<tagGroup> exists, if not, create it
     geoFolderName = 'geodata'
-    if not os.path.exists(DATA_ROOT + geoFolderName):
-        os.makedirs(DATA_ROOT + geoFolderName)
+    if not os.path.exists(geoFolderName):
+        os.makedirs(geoFolderName)
 
     # Prints results of all_tags to a file <DATA_ROOT>/<tagGroup>/<tag>_<unix_time>ut_<numPages>pages.txt
     outputFilename = DATA_ROOT + "/" + geoFolderName + "/" + str(currTime) + "ut_"  + "geodata.txt"
@@ -133,7 +115,8 @@ def sel_login(browser):
         .perform() # [/1]
 
 # This function parses data from a given URL and returns a list of Post objects, the end cursor for the next page, and if there is a next page
-def sel_parse(browser, url):
+def sel_parse(browser, post):
+    url = make_GeoUrl(post.postCode)
     browser.get(url) # Gets the url and automatically waits for page to load
     html = browser.page_source
     jsonStr = html[84:-20] # Remove first and last part of HTML to only get JSON contents of page
@@ -142,16 +125,23 @@ def sel_parse(browser, url):
         return None
     
     json1 = util.read_json(jsonStr) #convert to json object
-   
 
-    postID = json1[0]['items']['id']
-    postName = json1[0]['items']['location']['name']
-    postAddress = json1[0]['items']['location']['address']
-    postCity = json1[0]['items']['location']['city']
-    postlng = json1[0]['items']['location']['lng']
-    postlat = json1[0]['items']['location']['lat']
+    postGeoInfo = json1['items'][0]
+    
+    if not 'location' in postGeoInfo.keys():
+        return None
 
-    post = GeoPost(postID, postName, postAddress, postCity, postlng, postlat)
+    postID = post.id
+    postCode = post.postCode
+    postName = postGeoInfo['location']['name']
+    shortName = postGeoInfo['location']['short_name']
+    placeID = postGeoInfo['location']['facebook_places_id']
+    postAddress = postGeoInfo['location']['address']
+    postCity = postGeoInfo['location']['city']
+    postlng = postGeoInfo['location']['lng']
+    postlat = postGeoInfo['location']['lat']
+
+    post = GeoPost(postID, postCode, postName, shortName, placeID, postAddress, postCity, postlng, postlat)
  
 
     return post
@@ -160,7 +150,7 @@ def sel_parse(browser, url):
 # Function that does everything related to selenium (opens browser, logs in, reads posts under tags, closes browser)
 # Returns a list of all post objects found under the given tag, the first endCursor, and the final endCursor
 def selenium(posts):
-    browser = webdriver.Chrome(executable_path="/Users/zoobi/Desktop/chromedriver")
+    browser = webdriver.Chrome(executable_path="../chromedriver.exe")
     sel_login(browser)
     time.sleep(5) # wait for login to complete
 
@@ -168,8 +158,7 @@ def selenium(posts):
 
     for i in range(len(posts)):
         print("Parsing post " + str((i+1)))
-        url = make_GeoUrl(posts[i].postCode)
-        geoPost = sel_parse(browser, url)
+        geoPost = sel_parse(browser, posts[i])
         if geoPost != None:
             allPostsGeo.append(geoPost)
 
