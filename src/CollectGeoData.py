@@ -72,12 +72,12 @@ def main():
     print("Number of posts: ", len(allPostsGeo))
 
     # Check if folder DATA_ROOT/<tagGroup> exists, if not, create it
-    geoFolderName = 'geodata'
+    geoFolderName = '../geodata'
     if not os.path.exists(geoFolderName):
         os.makedirs(geoFolderName)
 
     # Prints results of all_tags to a file <DATA_ROOT>/<tagGroup>/<tag>_<unix_time>ut_<numPages>pages.txt
-    outputFilename = DATA_ROOT + "/" + geoFolderName + "/" + str(currTime) + "ut_"  + "geodata.txt"
+    outputFilename = geoFolderName + "/" + str(currTime) + "ut_" + str(len(allPostsGeo)) + "posts_geodata.txt"
     with open(outputFilename, 'w', encoding="utf8") as f:
         for post in allPostsGeo:
             f.write(str(post) + "\n")
