@@ -9,8 +9,8 @@ from Utilities import Post
 
 PAGES = 1
 MAX_POSTS_PER_PAGE = 50
-METADATA_ROOT = "..\\metadata\\"
-DATA_ROOT = "..\\data\\"
+
+DATA_ROOT = "../data/"
 ERR_USAGE = "Usage:\npython CollectData.py <hashtag>\npython CollectData.py <hashtag> <numPages>\npython CollectData.py <hashtag> <numPages> <endCursor>"
 postCodeVar = ""
 
@@ -67,56 +67,38 @@ class GeoPost:
     def timeToStr(self):
         return time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(self.timeStamp))
 
+def make_GeoUrl(postCode):
+    return 'https://www.instagram.com/p/' + postCode + '/?__a=1'
 
 # main function
 def main():
     start = time.time()
     # check if proper number of arguments are given
     # and set up request objects
-    if len(sys.argv) < 2 or len(sys.argv) > 4:
-        print("Invalid number of arguments\n" + ERR_USAGE)
-        return -1
-    
-    request = ParseRequest(sys.argv[1].lower()) # default to numPages = PAGES, endCursor = None
-    if len(sys.argv) == 3:
-        request.numPages = int(sys.argv[2])
-    elif len(sys.argv) == 4:
-        request.numPages = int(sys.argv[2])
-        request.endCursor = sys.argv[3]
+
     
     # create url from request object
     #url = util.make_url(request.tag, MAX_POSTS_PER_PAGE, request.endCursor) # make url
-    url = util.make_GeoUrl(postCodeVar)
-    print(url) #display url
+
+    posts = util.read_posts(DATA_ROOT + 'data_thinned.txt')
+
+    posts = posts[:10]
 
     # create browser and store results
     currTime = int(time.time())
-    allPostsGeo, firstCursor, finalCursor = selenium(request) # opens in controlled browser
+    allPostsGeo = selenium(posts) # opens in controlled browser
     print("Number of posts: ", len(allPostsGeo))
 
     # Check if folder DATA_ROOT/<tagGroup> exists, if not, create it
-    tagGroup = util.tag_to_folder(request.tag)
-    if not os.path.exists(DATA_ROOT + tagGroup):
-        os.makedirs(DATA_ROOT + tagGroup)
+    geoFolderName = 'geodata'
+    if not os.path.exists(DATA_ROOT + geoFolderName):
+        os.makedirs(DATA_ROOT + geoFolderName)
 
     # Prints results of all_tags to a file <DATA_ROOT>/<tagGroup>/<tag>_<unix_time>ut_<numPages>pages.txt
-    outputFilename = DATA_ROOT + "\\" + tagGroup + "\\" + request.tag + "_" + str(currTime) + "ut_" + str(request.numPages) + "pages.txt"
+    outputFilename = DATA_ROOT + "/" + geoFolderName + "/" + str(currTime) + "ut_"  + "geodata.txt"
     with open(outputFilename, 'w', encoding="utf8") as f:
         for post in allPostsGeo:
             f.write(str(post) + "\n")
-    
-    # Check if folder METADATA_ROOT/<tagGroup> exists, if not, create it
-    if not os.path.exists(METADATA_ROOT + tagGroup):
-        os.makedirs(METADATA_ROOT + tagGroup)
-
-    # Print metadata to a file <METADATA_ROOT>/<tagGroup>/<tag>_bookmark_<unix_time>ut_<numPages>pages.txt
-    metaFilename = METADATA_ROOT + "\\" + tagGroup + "\\" + request.tag + "_bookmark_" + str(currTime) + "ut_" + str(request.numPages) + "pages" + ".txt"
-    with open(metaFilename, 'w', encoding="utf8") as f:
-        f.write("Number of posts: " + str(len(allPostsGeo)) + "\n\n")
-
-        f.write("First Cursor: " + str(firstCursor) + "\n")
-        f.write("Final Cursor: " + str(finalCursor) + "\n\n")
-
 
     end = time.time()
     print("Time taken: " + str(end - start))
@@ -157,10 +139,10 @@ def sel_parse(browser, url):
     jsonStr = html[84:-20] # Remove first and last part of HTML to only get JSON contents of page
 
     if jsonStr == '{}':         #if the account is private or lost 
-        return
+        return None
     
     json1 = util.read_json(jsonStr) #convert to json object
-    posts = []
+   
 
     postID = json1[0]['items']['id']
     postName = json1[0]['items']['location']['name']
@@ -169,45 +151,32 @@ def sel_parse(browser, url):
     postlng = json1[0]['items']['location']['lng']
     postlat = json1[0]['items']['location']['lat']
 
-    post = Post(postID, postName, postAddress, postCity, postlng, postlat)
-    posts.append(post)
+    post = GeoPost(postID, postName, postAddress, postCity, postlng, postlat)
+ 
 
-    return posts
+    return post
 
 
 # Function that does everything related to selenium (opens browser, logs in, reads posts under tags, closes browser)
 # Returns a list of all post objects found under the given tag, the first endCursor, and the final endCursor
-def selenium(request):
-    print("Tag: ", request.tag)
-    print("Number of entries: " + str(request.numPages))
-    browser = webdriver.Chrome(executable_path="/Users/tashijeshong/Desktop/ATinstagram-mainFinal/chromedriver")
+def selenium(posts):
+    browser = webdriver.Chrome(executable_path="/Users/zoobi/Desktop/chromedriver")
     sel_login(browser)
     time.sleep(5) # wait for login to complete
 
     allPostsGeo = []
-    firstCursor = "[None]"
-    lastCursor = "[None]"
 
-    for i in range(request.numPages):
-        print("Parsing page " + str((i+1)))
-        url = util.make_url(request.tag, MAX_POSTS_PER_PAGE, request.endCursor)
-        posts, endCursor, morePages = sel_parse(browser, url)
-        allPostsGeo.extend(posts)
-        if morePages == False:
-            print("No more pages")
-            break
-
-        lastCursor = endCursor
-        request.endCursor = endCursor
-        if i == 0:
-            firstCursor = endCursor
-    
-    request.numPages = i + 1
+    for i in range(len(posts)):
+        print("Parsing post " + str((i+1)))
+        url = make_GeoUrl(posts[i].postCode)
+        geoPost = sel_parse(browser, url)
+        if geoPost != None:
+            allPostsGeo.append(geoPost)
 
 
     browser.quit()
-    # tags = IP.combine_tags(tags1, tags2)
-    return allPostsGeo, firstCursor, lastCursor
+    return allPostsGeo
+
 
 # start main
 if __name__ == "__main__":
