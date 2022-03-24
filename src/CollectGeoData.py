@@ -29,7 +29,7 @@ class ParseRequest:
 
 
 class GeoPost:
-    def __init__(self, id, postCode, name, shortName, placeID, address, city, lng, lat):
+    def __init__(self, id, postCode, name, shortName, placeID, address, city, lat, lng):
         self.id = str(id)
         self.postCode = str(postCode)
         self.name = str(name)
@@ -37,11 +37,11 @@ class GeoPost:
         self.placeID = int(placeID)
         self.address = str(address)
         self.city = str(city)
-        self.lng = int(lng)
         self.lat = int(lat)
+        self.lng = int(lng)
 
     def __str__(self):
-        return "Post_ID: " + self.id + "\t|Post_Code: " + self.postCode + "\t|Place_Name: " + self.name + "\t|Short_Name: " + self.shortName + "\t|Place_ID: " + str(self.placeID) + "\t|Address: " + self.address + "\t|City: " + str(self.city) + "\t|Longitude: " + str(self.lng) + "\t|Latitude: " + str(self.lat)
+        return "Post_ID: " + self.id + "\t|Post_Code: " + self.postCode + "\t|Place_Name: " + self.name + "\t|Short_Name: " + self.shortName + "\t|Place_ID: " + str(self.placeID) + "\t|Address: " + self.address + "\t|City: " + str(self.city) + "\t|Latitude: " + str(self.lat) + "\t|Longitude: " + str(self.lng) 
     
     def asArray(self):
         return [self.id, self.name, self.address, self.city, self.lng, self.lat]
@@ -64,7 +64,7 @@ def main():
 
     posts = util.read_posts(DATA_ROOT + 'data_thinned.txt')
 
-    posts = posts[:10]
+    posts = posts[:1000]
 
     # create browser and store results
     currTime = int(time.time())
@@ -133,15 +133,39 @@ def sel_parse(browser, post):
 
     postID = post.id
     postCode = post.postCode
-    postName = postGeoInfo['location']['name']
-    shortName = postGeoInfo['location']['short_name']
-    placeID = postGeoInfo['location']['facebook_places_id']
-    postAddress = postGeoInfo['location']['address']
-    postCity = postGeoInfo['location']['city']
-    postlng = postGeoInfo['location']['lng']
-    postlat = postGeoInfo['location']['lat']
 
-    post = GeoPost(postID, postCode, postName, shortName, placeID, postAddress, postCity, postlng, postlat)
+    postName = "[Null]"
+    if 'name' in postGeoInfo['location'].keys():
+        postName = postGeoInfo['location']['name']
+    
+    postShortName = "[Null]"
+    if 'short_name' in postGeoInfo['location'].keys():
+        shortName = postGeoInfo['location']['short_name']
+
+    postPlaceID = -1
+    if 'facebook_places_id' in postGeoInfo['location'].keys():
+        placeID = postGeoInfo['location']['facebook_places_id']
+    
+    postAddress = "[Null]"
+    if 'address' in postGeoInfo['location'].keys():
+        postAddress = postGeoInfo['location']['address']
+
+    postCity = "[Null]"
+    if 'city' in postGeoInfo['location'].keys():
+        postCity = postGeoInfo['location']['city']
+    
+    postLat = -1
+    if 'lat' in postGeoInfo['location'].keys():
+        postLat = postGeoInfo['location']['lat']
+
+    postLng = -1
+    if 'lng' in postGeoInfo['location'].keys():
+        postLng = postGeoInfo['location']['lng']
+    
+    
+    
+
+    post = GeoPost(postID, postCode, postName, shortName, placeID, postAddress, postCity, postLat, postLng)
  
 
     return post
@@ -156,11 +180,16 @@ def selenium(posts):
 
     allPostsGeo = []
 
+    startInner = time.time()
+
     for i in range(len(posts)):
         print("Parsing post " + str((i+1)))
         geoPost = sel_parse(browser, posts[i])
         if geoPost != None:
             allPostsGeo.append(geoPost)
+    
+    endInner = time.time()
+    print("Inner loop time taken: " + str(endInner - startInner))
 
 
     browser.quit()
