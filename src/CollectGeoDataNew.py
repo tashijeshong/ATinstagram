@@ -37,8 +37,8 @@ class GeoPost:
         self.placeID = int(placeID)
         self.address = str(address)
         self.city = str(city)
-        self.lat = int(lat)
-        self.lng = int(lng)
+        self.lat = float(lat)
+        self.lng = float(lng)
 
     def __str__(self):
         return "Post_ID: " + self.id + "\t|Post_Code: " + self.postCode + "\t|Place_Name: " + self.name + "\t|Short_Name: " + self.shortName + "\t|Place_ID: " + str(self.placeID) + "\t|Address: " + self.address + "\t|City: " + str(self.city) + "\t|Latitude: " + str(self.lat) + "\t|Longitude: " + str(self.lng) 
@@ -62,9 +62,9 @@ def main():
     # create url from request object
     #url = util.make_url(request.tag, MAX_POSTS_PER_PAGE, request.endCursor) # make url
 
-    posts = util.read_posts(DATA_ROOT + 'data_thinnedOLD.txt')
+    posts = util.read_posts(DATA_ROOT + 'data_thinned.txt')
 
-    posts = posts[:1000]
+    posts = posts[:100000] 
 
     # create browser and store results
     currTime = int(time.time())
@@ -174,7 +174,7 @@ def sel_parse(browser, post):
 # Function that does everything related to selenium (opens browser, logs in, reads posts under tags, closes browser)
 # Returns a list of all post objects found under the given tag, the first endCursor, and the final endCursor
 def selenium(posts):
-    browser = webdriver.Chrome(executable_path="../chromedriver")
+    browser = webdriver.Chrome(executable_path="/Users/tashijeshong/Desktop/ATinstagram-mainFinal/chromedriver")
     sel_login(browser)
     time.sleep(5) # wait for login to complete
 
@@ -187,21 +187,27 @@ def selenium(posts):
     if not os.path.exists(geoFolderName):
         os.makedirs(geoFolderName)
 
-    for i in range(len(posts)):
-        print("Parsing post " + str((i+1)))
-        geoPost = sel_parse(browser, posts[i])
-        if geoPost != None:
-            allPostsGeo.append(geoPost)
-        
-    # Prints results of all_tags to a file <DATA_ROOT>/<tagGroup>/<tag>_<unix_time>ut_<numPages>pages.txt
-        outputFilename = geoFolderName + "/" + "ut_" + str(len(allPostsGeo)) + "posts_geodata.txt"
-        with open(outputFilename, 'w', encoding="utf8") as f:
-            for post in allPostsGeo:
-                f.write(str(post) + "\n")
+    j = 0
+
+    #print(len(posts))
+    #print(posts[1001])
+    for i in range(100000): #Line 67 caps this at 1000 post so I hard coded this value for now,
+        val = posts[i]
+        if (j > 6218):  #changes after everytime instagram stops us and then update this value
+            print("Parsing post " + str((i+1)))
+            geoPost = sel_parse(browser, posts[i])
+            if geoPost != None:
+                allPostsGeo.append(geoPost)
+            
+              # Prints results of all_tags to a file <DATA_ROOT>/<tagGroup>/<tag>_<unix_time>ut_<numPages>pages.txt
+            outputFilename = geoFolderName + "/" + "ut_" + str(len(allPostsGeo)) + "posts_geodata.txt"
+            with open(outputFilename, 'w', encoding="utf8") as f:
+                for post in allPostsGeo:
+                    f.write(str(post) + "\n")
+        j = j + 1
+    print(j)
 
 
-        if (i == 500):
-            time.sleep(3600)
     
     endInner = time.time()
     print("Inner loop time taken: " + str(endInner - startInner))
