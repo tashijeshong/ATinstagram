@@ -1,0 +1,33 @@
+Given sentence:: This guy is not smart, handsome, nor funny.
+
+Words in lexicon list and their valence scores are: 
+smart: 1.7
+handsome: 2.2
+funny: 1.9
+<Words with ALL CAPS will have their intensity increased by adjusting their scalar>
+
+Negation words used: 
+not
+nor
+<These negation words are accounted when calculating valence scores>
+
+Each word in the sentence score with necessary scalar and intensity applied:
+This: 0.000
+guy: 0.000
+is: 0.000
+not: 0.000
+smart: -1.258
+handsome: -1.628
+nor: 0.000
+funny: -1.406
+
+Normalizing the total score...
+Computing positive, negative, and neutral scores...
+neg score was: 0.593
+neu score was: 0.407
+pos score was: 0.000
+compound score was: -0.742
+
+The sentence in overall had negative sentiment with compounding score -0.742
+==============================================================
+

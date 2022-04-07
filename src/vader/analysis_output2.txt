@@ -1,0 +1,3 @@
+Given sentence:: This is going to work out GREAT
+
+Words in lexicon list and their valence scores are: 
