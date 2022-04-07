@@ -6,8 +6,8 @@ import csv
 from langdetect import detect_langs
 
 TAGTERMINATORS = [' ', '#', '\n', '\r', '\t', ',', '.', '&', '\'', '\"', ':', ';', '!', '?', '-', '_', '+', '=', '*', '%', '$', '@', '^', '&', '|', '~', '`', '(', ')', '{', '}', '[', ']', '<', '>', '/', '\\', '\u3000']
-METADATA_ROOT = "..\\metadata\\"
-DATA_ROOT = "..\\data\\"
+METADATA_ROOT = "../metadata/"
+DATA_ROOT = "../data/"
 
 class Post:
     def __init__(self, id, postCode, ownerId, likes, timeStamp, tags, caption):
@@ -22,12 +22,33 @@ class Post:
     def __str__(self):
         return "Post_ID: " + self.id + "\t|Post_Code: " + self.postCode + "\t|Owner_ID: " + self.ownerId + "\t|Likes: " + str(self.likes) + "\t|Time_Stamp: " + str(self.timeStamp) + "\t|Tags: " + str(self.tags) + "\t|Caption: " + self.caption 
     
+    def getHeader(self):
+        return ["Post_ID", "Post_Code", "Owner_ID", "Likes", "Time_Stamp", "Tags", "Caption"]
+
     def asArray(self):
         return [self.id, self.postCode, self.ownerId, self.likes, self.timeStamp, self.tags, self.caption]
 
     def timeToStr(self):
         return time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(self.timeStamp))
 
+
+class PostSentiment:
+    def __init__(self, post, wordScoreTuples, lexTuples, negationWords, sentimentDict, score):
+        self.post = post
+        self.wordScoreTuples = wordScoreTuples
+        self.lexTuples = lexTuples
+        self.negationWords = negationWords
+        self.sentimentDict = sentimentDict
+        self.score = score
+
+    def __str__(self):
+        return str(self.post) + "\t|Word_Score: " + str(self.wordScoreTuples) + "\t|Lex_Score: " + str(self.lexTuples) + "\t|Negation_Words: " + str(self.negationWords) + "\t|Sentiment_Scores: " + str(self.sentimentDict) + "\t|Score: " + str(self.score)
+    
+    def getHeader(self):
+        return self.post.getHeader() + ["Word_Score", "Lex_Score", "Negation_Words", "Sentiment_Scores", "Score"]
+
+    def asArray(self):
+        return self.post.asArray() + [self.wordScoreTuples, self.lexTuples, self.negationWords, self.sentimentDict, self.score]
 
 # Opens a file and returns a list of Post objects
 # One Post object per line, and format is: "Post_ID: [id]	|Post_Code: [shortCode]	|Owner_ID: [ownerId]	|Likes: [likes]	|Time_Stamp: [timeStamp]	|Tags: [tags]	|Caption: [caption]"
@@ -42,7 +63,7 @@ def read_posts(filename):
         
 
 # Function that takes a .txt filename and returns a list of post objects
-# Example: read_txt("..\\data\\data_thinned.txt")
+# Example: read_txt("../data/data_thinned.txt")
 def read_txt(filename):
     posts = []
     with open(filename, 'r', encoding="utf8") as f:
@@ -67,7 +88,7 @@ def read_txt(filename):
 
 
 # Function that takes a .csv filename and returns a list of post objects
-# Example: read_csv("..\\data\\data_thinned.csv")
+# Example: read_csv("../data/data_thinned.csv")
 def read_csv(filename):
     posts = []
     with open(filename, 'r', encoding="utf8") as f:
@@ -150,7 +171,7 @@ def tag_to_folder(tag):
 # Uses the tag_to_folder function to get the folder name
 def get_filenames(tag):
     folder = tag_to_folder(tag)
-    return glob.glob(DATA_ROOT + folder + "\\" + tag + "_*.txt")
+    return glob.glob(DATA_ROOT + folder + "/" + tag + "_*.txt")
 
 
 # This function takes a description and returns an array of cleaned tags
@@ -253,6 +274,16 @@ def is_english(caption):
 # Function that splits a caption into its constituent words
 def split_caption(caption):
     # Clean up some weirdness of the caption
+    appPattern = re.compile("["
+        u"\U00002019-\U00002019"  # apostrophe
+        "]+", flags=re.UNICODE)
+    caption = appPattern.sub(r"'", caption)
+
+    appPattern = re.compile("["
+        u"\U0000201C-\U0000201D"  # opening and closing double quotes
+        "]+", flags=re.UNICODE)
+    caption = appPattern.sub(r'"', caption)
+
     caption = remove_emoji(caption).lower().encode("ascii", "ignore").decode()
     caption = caption.replace("<br>", " ").replace("&nbsp;", " ")
     # Split the caption into words
@@ -264,3 +295,32 @@ def split_caption(caption):
     
     return words # need to remove elements that are just '#'
                  # potentially replace special characters with spaces (except for single quote "'") first
+
+
+### FOLLOWING FUNCTION ADAPTED FROM HERE: https://stackoverflow.com/questions/3173320/text-progress-bar-in-terminal-with-block-characters
+# Print iterations progress
+def printProgressBar(iteration, total, prefix = '', suffix = '', decimals = 1, length = 100, chars = '░▒▓█', printEnd = "\r"):
+    """
+    Call in a loop to create terminal progress bar
+    @params:
+        iteration   - Required  : current iteration (Int)
+        total       - Required  : total iterations (Int)
+        prefix      - Optional  : prefix string (Str)
+        suffix      - Optional  : suffix string (Str)
+        decimals    - Optional  : positive number of decimals in percent complete (Int)
+        length      - Optional  : character length of bar (Int)
+        fill        - Optional  : bar fill character (Str)
+        printEnd    - Optional  : end character (e.g. "\r", "\r\n") (Str)
+    """
+    percent = ("{0:." + str(decimals) + "f}").format(100 * (iteration / float(total)))
+    idx = int((iteration / total) * len(chars))
+    if idx == len(chars):
+        idx -= 1
+    fill = chars[idx]
+    filledLength = int(length * iteration // total)
+    bar = fill * filledLength + '-' * (length - filledLength)
+    print(f'\r{prefix} |{bar}| {percent}% {suffix}', end = printEnd)
+    # Print New Line on Complete
+    if iteration == total: 
+        print()
+### END OF FUNCTION ADAPTED FROM HERE: https://stackoverflow.com/questions/3173320/text-progress-bar-in-terminal-with-block-characters
