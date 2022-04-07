@@ -8,14 +8,14 @@ import math
 import Utilities as util
 import random
 
-SPARSEBAG = ['leave no trace', 'leave no', 'plan', 'visit', 'dispose', 'recycle', "don't take", 'respect', 'minimize', 'wildlife', 'considerate', 'protect', 'leave it better', 'leaveitbetter', 'pick up', 'trash']
+SPARSEBAG = ['leave', 'trace', 'plan', 'visit', 'dispose', 'recycle', 'respect', 'minimize', 'wildlife', 'considerate', 'protect', 'better', 'pick', 'pickup', 'trash', 'garbage']
 BAGOFWORDS = ['leaveitbetter', 'better', 'leavenotrace', 'leav', 'not leav', 'no', 'trace', 'plan', 'dispose', 'damage', 'fire', 'respect', 'conserv', 'wild', 'considerate', 'trail', 'clean', 'up', 'cleanup', 'good', 'bad', 'sad', 'better', 'total', 'recycle', 'trash', 'garbage', 'goal', 'natural', 'mess', 'ethic']
 COMMONWORDS = ["the", "and", "for", "are", "of", "an", "to", "a", "in", "is", "it", "you", "that", "with", "as", "was", "he", "be", "on", "at", "by", "this", "have", "from", "or", "but", "his", "not", "they", "which", "one", "had", "word", "what", "all", "were", "we", "when", "your", "can", "said", "there", "use", "each", "", "i", "up", "my", "so", "more", "us", "go", "if", "no", "our", "into", "like", "im", "out", "see", "him", "been", "had", "them", "some", "time", "they", "may", "did", "who", "oil", "now", "get", "come", "just", "know", "take", "people", "into", "year", "your", "good", "some", "could", "them", "then", "only", "those", "very", "she", "well", "were", "need", "any", "these", "also", "over", "think", "also", "back", "after", "use", "two", "how", "way", "our", "work", "first", "well", "well", "these", "went", "made", "were", "well", "being", "through", "where", "much", "before", "want", "because", "those", "those", "while", "those", "again", "where", "how", "well", "being", "through", "where", "much", "before", "want", "because", "those", "those", "while", "those", "again", "where", "how", "well", "being", "through", "where", "much", "before", "want", "because", "those", "those", "while", "those", "again", "where", "how", "well", "being", "through", "where", "much", "before", "want", "because", "those", "those", "while", "those", "again", "where", "how", "well", "being", "through", "where", "much", "before", "want", "because", "those", "those", "while", "those", "again", "where", "how", "well", "being", "through", "where", "much", "before", "want", "because", "those", "those", "while", "those", "again", "where", "how", "well", "being", "through", "where", "much", "before", "want", "because", "those", "those", "while", "those", "again", "where", "how", "well", "being", "through", "where", "much", "about", "before", "again", "has", "around", "many", "com", "it's", "even", "would"]
-NUMCLUSTERS = 3
+NUMCLUSTERS = 5
 
 # Return a vector from a caption representing which words from the bagOfWords are present in the caption
 def assign_vector(text, bagOfWords=BAGOFWORDS):
-    text = clean_caption(text)
+    text = util.split_caption(text)
     vector = [0] * len(bagOfWords)
     for word in bagOfWords:
         if word in text:
@@ -67,7 +67,7 @@ def calc_dist(vector1, vector2):
 
 # Cleans a caption to remove punctuation and emojis
 def clean_caption(caption):
-    caption = caption.lower().replace("<\\br>", " ").replace("&nbsp;", " ")
+    caption = caption.lower().replace("<br>", " ").replace("&nbsp;", " ")
 
     newCaption = "" # Remove punctuation and emojis
     for char in caption:
@@ -80,8 +80,8 @@ def clean_caption(caption):
 def get_unique_words(captions):
     unique_words = {}
     for caption in captions:
-        newCaption = clean_caption(caption)
-        for word in newCaption.split(" "):
+        captionWords = util.split_caption(caption)
+        for word in captionWords:
             if word not in unique_words and word not in COMMONWORDS and len(word) >= 3:
                 unique_words[word] = 1
             elif word in unique_words and word not in COMMONWORDS and len(word) >= 3:
@@ -113,7 +113,7 @@ def setup_clusters(vectors, numClusters):
 def thin_clusters(clusters, centers, numVectors):
     thinnedClusters = []
     for i in range(len(clusters)): # For each cluster
-        thinnedCluser = []
+        thinnedCluster = []
         minDist = 0
         for n in range(numVectors): # Get numVectors vectors closest to the center
             if n > len(clusters[i]): # Break if we've gone through all the vectors in the cluster
@@ -125,9 +125,9 @@ def thin_clusters(clusters, centers, numVectors):
                 if distance < closestDist and distance > minDist:
                     closestDist = distance
                     closestVector = vector
-            thinnedCluser.append(closestVector[0])
+            thinnedCluster.append(closestVector) #thinnedCluster.append(closestVector[0])
             minDist = closestDist
-        thinnedClusters.append(thinnedCluser)
+        thinnedClusters.append(thinnedCluster)
 
     return thinnedClusters        
 
@@ -135,23 +135,31 @@ def thin_clusters(clusters, centers, numVectors):
 # numClusters: number of clusters to create
 # bagOfWords: list of words to use as features
 def train(dataset, numClusters=NUMCLUSTERS, bagOfWords=BAGOFWORDS):
+    print("Making vectors...")
     vectors = make_vectors(dataset, bagOfWords)
+    print("Assigning vectors to clusters...")
     clusters = setup_clusters(vectors, numClusters)
     
     # Train the clusters until convergence
     lastClusters = None
+    lastAvgDist = float("inf")
+
 
     iter = 0
     while True:
         centers = find_centers(clusters, bagOfWords)
-        clusters, lastAvgDist = assign_clusters(vectors, centers)
-        if clusters == lastClusters:
+        clusters, avgDist = assign_clusters(vectors, centers)
+        ratio = avgDist / lastAvgDist
+        factor = 1 - ratio
+        if clusters == lastClusters or factor < 0.00001 or iter > 50:
             break
         lastClusters = clusters
+        lastAvgDist = avgDist
         iter += 1
+        print("Iteration " + str(iter - 1) + ": " + str(avgDist))
     
     print("Training took " + str(iter) + " iterations")
-    print("Average distance: " + str(lastAvgDist))
+    print("Average distance: " + str(avgDist))
     return clusters, centers
 
 def print_clusters(clusters):
