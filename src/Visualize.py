@@ -11,11 +11,11 @@ import Utilities as util
 
 # Function that builds up a dictionary of tags that occured with other tags per each post
 def get_tag_arr(connections=150, interestingTags=[]):
-    print(connections)
-    print(interestingTags)
+    # print(connections, "connections")
+    # print(interestingTags)
     allData = DATA_ROOT + "data_thinned.txt"
-    # atnoboData = DATA_ROOT + "atnoboXXXX/atnobo2019_1644256478ut_8pages.txt"
-    posts = util.read_posts(allData)
+    atnoboData = DATA_ROOT + "atnoboXXXX/atnobo2019_1644256478ut_8pages.txt"
+    posts = util.read_posts(atnoboData)
     tagDict = {}
     counter = 0
     total = len(posts)
@@ -37,7 +37,7 @@ def get_tag_arr(connections=150, interestingTags=[]):
 
 
     # sort the dictionary by value
-    sorted_x = sorted(interestingDict.items(), key=lambda kv: kv[1], reverse=True)
+    sorted_x = sorted(tagDict.items(), key=lambda kv: kv[1], reverse=True)
     if len(interestingTags) > 0:
         sorted_x = sorted(interestingDict.items(), key=lambda kv: kv[1], reverse=True)
  
@@ -86,7 +86,7 @@ def show_connected_graph(connections=150, interestingTags=[]):
         dataTypeLabel = "TrimmedData"
 
     net.from_nx(G)
-    net.show("../results/" + dataTypeLabel + connections + ".html")
+    net.show("../results/" + dataTypeLabel + str(connections) + ".html")
 
 # Function that takes a filename and returns a list of GeoPost objects
 def read_geo_posts(filename):
