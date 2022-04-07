@@ -2,14 +2,18 @@ import time
 import os
 import csv
 
-from CollectData import Post
+from Utilities import Post
+from Utilities import PostSentiment
 import Utilities as util
 import BagOfWords as bag
+
+from vader.vaderSentiment.vaderSentiment import NEGATE, SentimentIntensityAnalyzer
 
 METADATA_ROOT = "../metadata/"
 DATA_ROOT = "../data/"
 ALL_DATA = DATA_ROOT + "data_thinned.csv"
 RESULTS_ROOT = "../results/"
+PROG_CHARS = "░▒▓█෴ᛞ០═" #unused
 
 
 class Info:
@@ -26,9 +30,12 @@ class Info:
         self.numUsers = -1 # number of unique users collected, -1 if not yet calculated
 
         self.sentimentCalculated = False
-        self.posPostIds = [] # list of post ids of posts with positive sentiment
-        self.negPostIds = [] # list of post ids of posts with negative sentiment
-        self.neutralPostIds = [] # list of post ids of posts with neutral sentiment
+        self.posPosts = [] # list of post sentiment objects with positive sentiment
+        self.negPosts = [] # list of post sentiment objects with negative sentiment
+        self.neutralPosts = [] # list of post sentiment objects with neutral sentiment
+
+        self.clusters = [] # list of clusters
+        self.clusterWords = [] # list of the relevant words used in each cluster
 
     # Add a list of posts to the Info object and update the number of posts
     def add_posts(self, posts):
@@ -115,10 +122,20 @@ def load_data(info):
 # Gives option to print out the data or quit
 def run_analysis(info):
     # Setup choices
-    validInput = ["1", "2", "3", "4", "5", "q", "i","c"]
+    validInput = ["1", "2", "3", "4", "5", "6", "q", "i","c"]
     usrChoice = -1
+
     # Ask for user input
-    usrChoice = input("\n[1]Count number of unique tags\n[2]Count number of unique users\n[3]Calculate top 5 words\n[4]Calculate top 5 adjectives\n[5]Calculate sentiment\n[Q]uit   | [I]nfo   | [C]ontinue\nUser Input: ").lower()
+    optionStr = """
+[1]Count number of unique tags
+[2]Count number of unique users
+[3]Calculate top 5 words
+[4]Calculate top 5 adjectives
+[5]Calculate sentiment
+[6]Cluster posts
+[Q]uit   | [I]nfo   | [C]ontinue\nUser Input: """
+
+    usrChoice = input(optionStr).lower()
     restart = False
     if usrChoice not in validInput:
         print("Invalid input. Try again.")
@@ -154,6 +171,11 @@ def run_analysis(info):
     elif usrChoice == "5":
         print("Calculating sentiment...")
         calculateSentiment(info)
+        restart = True
+    
+    elif usrChoice == "6":
+        print("Clustering posts...")
+        clusterPosts(info)
         restart = True
     
     elif usrChoice == "c":
@@ -196,13 +218,19 @@ def print_data(info):
 # Calculates the number of each unique tag in the posts in the Info object
 def calculateUniqueTags(info):
     # Get all tags from all posts and record their counts
+    idx = 0
+    total = len(info.postDictionary)
     for key in info.postDictionary:
         post = info.postDictionary[key]
-        for tag in post.tags:
+        lowerTags = [tag.lower() for tag in post.tags]
+        for tag in lowerTags:
             if tag not in info.topTags:
                 info.topTags[tag] = 1
             else:
                 info.topTags[tag] += 1
+        idx += 1
+        if idx % (int(total / 1000) + 1) == 0 or idx == total:
+            util.printProgressBar(idx, total, prefix = 'Progress:', suffix = 'Complete', length = 50)
     
     # Calculate the number of unique tags
     info.numTags = len(info.topTags)
@@ -212,17 +240,23 @@ def calculateUniqueTags(info):
     info.topTags = {}
     for tag in sortedTags:
         info.topTags[tag[0]] = tag[1]
+    
 
 
 # Calculates the number of each unique user in the posts in the Info object
 def calculateUniqueUsers(info):
     # Get all users from all posts and record their counts
+    idx = 0
+    total = len(info.postDictionary)
     for key in info.postDictionary:
         post = info.postDictionary[key]
         if post.ownerId not in info.topUsers:
             info.topUsers[post.ownerId] = 1
         else:
             info.topUsers[post.ownerId] += 1
+        idx += 1
+        if idx % (int(total / 1000) + 1) == 0 or idx == total:
+            util.printProgressBar(idx, total, prefix = 'Progress:', suffix = 'Complete', length = 50)
 
     # Calculate number of unique users
     info.numUsers = len(info.topUsers)
@@ -244,15 +278,20 @@ def calculateTopWords(info):
             commonWords.append(line.strip())
 
     # Get all words from all posts and record their counts
+    idx = 0
+    total = len(info.postDictionary)
     for key in info.postDictionary:
         post = info.postDictionary[key]
         words = util.split_caption(post.caption)
         for word in words:
-            if not word in commonWords and '#' not in word and len(word) > 2:
+            if not word in commonWords and word.isalpha() and len(word) > 2:
                 if word not in info.topWords:
                     info.topWords[word] = 1
                 else:
                     info.topWords[word] += 1
+        idx += 1
+        if idx % (int(total / 1000) + 1) == 0 or idx == total:
+            util.printProgressBar(idx, total, prefix = 'Progress:', suffix = 'Complete', length = 50)
     
     # Sort words by count
     sortedWords = sorted(info.topWords.items(), key=lambda x: x[1], reverse=True)
@@ -265,38 +304,6 @@ def calculateTopWords(info):
 def calculateTopAdjectives(info):
     # Gets all adjectives
     adjectives = []
-    THRESHHOLD = 0 # Threshold for how many times a word must appear in order to be considered an adjective
-    with open(DATA_ROOT + "sorted_adjectives.txt", "r") as f:
-        for line in f:
-            # Each line is of format: "[adjective]: [count]"
-            adjCount = line.split(":")
-            adj = adjCount[0].strip()
-            count = int(adjCount[1].strip())
-            if count > THRESHHOLD:
-                adjectives.append(adj)
-
-
-    # Get all words from all posts and record the counts of each relevant adjective
-    for key in info.postDictionary:
-        post = info.postDictionary[key]
-        words = util.split_caption(post.caption)
-        for adj in adjectives:
-            if adj in words:
-                if adj not in info.topAdjectives:
-                    info.topAdjectives[adj] = 1
-                else:
-                    info.topAdjectives[adj] += 1
-    
-    # Sort adjectives by count
-    sortedWords = sorted(info.topAdjectives.items(), key=lambda x: x[1], reverse=True)
-    info.topAdjectives = {}
-    for word in sortedWords:
-        info.topAdjectives[word[0]] = word[1]
-
-# Calculates the sentiment of the posts in the Info object
-# Stores post ids in info.posPostIds and info.negPostIds
-def calculateSentiment(info):
-    # Get positive and negative adjectives
     posAdjs = []
     negAdjs = []
     with open(DATA_ROOT + "positive.txt", "r") as f:
@@ -306,30 +313,190 @@ def calculateSentiment(info):
         for line in f:
             negAdjs.append(line.strip())
     
-    # Check all post captions for positive and negative adjectives
-    # If a post contains more positive adjectives than negative, it is considered positive
-    info.posPostIds = []
-    info.negPostIds = []
-    info.neutralPostIds = []
+    adjectives.extend(posAdjs)
+    adjectives.extend(negAdjs)
+
+
+    # Get all words from all posts and record the counts of each relevant adjective
+    idx = 0
+    total = len(info.postDictionary)
     for key in info.postDictionary:
         post = info.postDictionary[key]
         words = util.split_caption(post.caption)
-        posCount = 0
-        negCount = 0
-        for word in words:
-            if word in posAdjs:
-                posCount += 1
-            if word in negAdjs:
-                negCount += 1
-        if posCount > negCount:
-            info.posPostIds.append(key)
-        elif negCount > posCount:
-            info.negPostIds.append(key)
+        for adj in adjectives:
+            if adj in words:
+                if adj not in info.topAdjectives:
+                    info.topAdjectives[adj] = 1
+                else:
+                    info.topAdjectives[adj] += 1
+        idx += 1
+        if idx % (int(total / 1000) + 1) == 0 or idx == total:
+            util.printProgressBar(idx, total, prefix = 'Progress:', suffix = 'Complete', length = 50)
+    
+    # Sort adjectives by count
+    sortedWords = sorted(info.topAdjectives.items(), key=lambda x: x[1], reverse=True)
+    info.topAdjectives = {}
+    for word in sortedWords:
+        info.topAdjectives[word[0]] = word[1]
+
+def get_sentiment(sentence, analyzer=SentimentIntensityAnalyzer()):
+    words_list = analyzer.list_of_words(sentence)
+    score_list = analyzer.scores_of_each_words(sentence)
+    wordScoreTuples = []
+    if len(words_list) != len(score_list):
+        print("Error: words_list and score_list are not the same length", len(words_list), len(score_list))
+        print(words_list)
+        print(score_list)
+        # print(sentence)
+    for i in range(len(words_list)):
+        wordI = words_list[i]
+        scoreI = score_list[i]
+        wordScoreTuples.append((wordI, scoreI))
+    # print(words_list)
+    # print(score_list)
+
+    lex_words = analyzer.list_of_lexicon_words(words_list)
+    lex_tuples = [(lex, analyzer.lexicon[lex.lower()]) for lex in lex_words]
+    # print(lex_tuples)
+
+    negate_count = 0
+    negate_words = []
+    for word in words_list:
+                if word in NEGATE:
+                    negate_count += 1
+                    negate_words.append(word)
+
+    vs = analyzer.polarity_scores(sentence)
+    # print(vs)
+    total_score = vs["compound"]
+    # if total_score >= 0.5:
+    #     pass# print("The sentence in overall had positive sentiment with compounding score")
+    # elif total_score >= 0.25 and total_score < 0.5:
+    #     pass# print("The sentence in overall had slightly positive sentiment with compounding score")
+    # elif total_score >= -0.25 and total_score < 0.25:
+    #     pass# print("The sentence in overall had neutral sentiment with compounding score")
+    # elif total_score > -0.5 and total_score < -0.25:
+    #     pass# print("The sentence in overall had slightly negative sentiment with compounding score")
+    # elif total_score <= -0.5:
+    #     pass# print("The sentence in overall had negative sentiment with compounding score")
+
+    return wordScoreTuples, lex_tuples, negate_words, vs
+
+# Calculates the sentiment of the posts in the Info object
+# Stores post ids in info.posPostIds and info.negPostIds
+def calculateSentiment(info):
+    # Start sentiment analyzer
+    analyzer = SentimentIntensityAnalyzer()
+    
+    # Check all post captions for positive and negative adjectives
+    # If a post contains more positive adjectives than negative, it is considered positive
+    info.posPosts = []
+    info.negPosts = []
+    info.neutralPosts = []
+    postSentiments = []
+    idx = 0
+    total = len(info.postDictionary)
+    if total == 0:
+        print("No posts to analyze")
+        return
+    for key in info.postDictionary:
+        post = info.postDictionary[key]
+        newCaption = util.split_caption(post.caption)
+        newCaption = ' '.join(newCaption)
+        wordScoreTuples, lex_tuples, negate_words, vs = get_sentiment(newCaption)
+        sentimentPost = PostSentiment(post, wordScoreTuples, lex_tuples, negate_words, vs, vs["compound"])
+
+        if sentimentPost.score >= 0.5:
+            info.posPosts.append(sentimentPost)
+        elif sentimentPost.score <= -0.5:
+            info.negPosts.append(sentimentPost)
         else:
-            info.neutralPostIds.append(key)
+            info.neutralPosts.append(sentimentPost)
+
+        postSentiments.append(sentimentPost)
+        idx += 1
+        if idx % (int(total / 1000) + 1) == 0 or idx == total:
+            util.printProgressBar(idx, total, prefix = 'Progress:', suffix = 'Complete', length = 50)
     
     info.sentimentCalculated = True
-            
+
+def clusterPosts(info):
+    # Get all posts
+    posts = []
+    for key in info.postDictionary:
+        posts.append(info.postDictionary[key])
+    
+    # Create a list of tuples of the form (post id, caption)
+    print("Formatting and sorting data...")
+    postTuples = []
+    for post in posts:
+        postTuples.append((post.id, post.caption))
+
+    # Get top 500 words
+    # calculateTopWords(info)
+    # top500 = []
+    # idx = 0
+    # for word in info.topWords:
+    #     top500.append(word)
+    #     idx += 1
+    #     if idx >= 500:
+    #         break
+
+    # justCaptions = [x[1] for x in postTuples]
+    # uniqueWords = bag.get_unique_words(justCaptions)
+    # sort uniqueWords by descending frequency
+    # uniqueWords = sorted(uniqueWords.items(), key=lambda x: x[1], reverse=True)
+    # Get top 500 words as a list of strings
+    # top500 = [x[0] for x in uniqueWords[:10]]
+
+    top500 = bag.SPARSEBAG
+
+    # Find the clusters
+    print("Finding clusters...\n")
+    myClusters, myCenters = bag.train(postTuples, bag.NUMCLUSTERS, top500)
+    print("Centers:")
+    print(myCenters)
+
+    info.clusters = myClusters
+
+    # Make a list of tuples of the form (word, score) for each center where score is myCenters[i] and word is top100[i]
+    # Then sort the list by score for each cluster
+    print("Finding top words for each cluster...")
+    clusterWords = []
+    for i in range(bag.NUMCLUSTERS):
+        clusterWords.append(sorted([(top500[j], myCenters[i][j]) for j in range(len(top500))], reverse=False))
+    print(clusterWords)
+
+    info.clusterWords = clusterWords
+    
+    # Find the top ten words for each cluster using myCenters and top100
+    topClusterWords = []
+    for i in range(bag.NUMCLUSTERS):
+        topClusterWords.append(clusterWords[i][:10])
+    print(topClusterWords)
+
+
+    emptyClusters = 0
+    for i in range(len(myClusters)):
+        print("Length of cluster " + str(i+1) + ": " + str(len(myClusters[i])))
+        if len(myClusters[i]) == 0:
+            emptyClusters += 1
+    print("There are " + str(len(myClusters) - emptyClusters) + " non-empty clusters")
+    
+    thinClusters = bag.thin_clusters(myClusters, myCenters, 3)
+
+    inputValid = True
+    while inputValid:
+        inputVal = int(input("\nEnter a cluster number to see the top posts in that cluster: "))
+        if inputVal > 0 and inputVal <= len(myClusters):
+            sortedClusterWords = sorted(clusterWords[inputVal-1], key=lambda x: x[1], reverse=True)
+            print("\nPosts in cluster " + str(inputVal) + ": " + str(sortedClusterWords))
+            for id in thinClusters[inputVal - 1]:
+                print(info.postDictionary[id[0]].postCode + "  " + str(id[1]))
+        else:
+            print("\nInvalid input, closing program...")
+            inputValid = False
+
 
 def get_info(infoObj):
     info = "Current Analysis Information:\n"
@@ -359,19 +526,19 @@ def get_info(infoObj):
     
     # Print number of positive posts
     if infoObj.sentimentCalculated:
-        info += "Number of positive posts:\t" + str(len(infoObj.posPostIds)) + "\n"
+        info += "Number of positive posts:\t" + str(len(infoObj.posPosts)) + "\n"
     else:
         info += "Number of positive posts:\t[Not yet calculated]\n"
     
     # Print number of negative posts
     if infoObj.sentimentCalculated:
-        info += "Number of negative posts:\t" + str(len(infoObj.negPostIds)) + "\n"
+        info += "Number of negative posts:\t" + str(len(infoObj.negPosts)) + "\n"
     else:
         info += "Number of negative posts:\t[Not yet calculated]\n"
     
     # Print number of neutral posts
     if infoObj.sentimentCalculated:
-        info += "Number of neutral posts:\t" + str(len(infoObj.neutralPostIds)) + "\n"
+        info += "Number of neutral posts:\t" + str(len(infoObj.neutralPosts)) + "\n"
     else:
         info += "Number of neutral posts:\t[Not yet calculated]\n"
 
@@ -460,24 +627,51 @@ def print_info(infoObj):
 
     # If the pos/neg posts are calculated, print the posts to .csv files
     if infoObj.sentimentCalculated:
-        header = ["Post_ID", "Post_Code", "Owner_ID", "Likes", "Time_Stamp", "Tags", "Caption"]
         with open(newFolderPath + "positive_posts.csv", "w", encoding="utf8", newline='') as f:
             writer = csv.writer(f)
-            writer.writerow(header)
-            for post in infoObj.posPostIds:
-                writer.writerow(infoObj.postDictionary[post].asArray())
+            if len(infoObj.posPosts) != 0:
+                writer.writerow(infoObj.posPosts[0].getHeader())
+            for post in infoObj.posPosts:
+                writer.writerow(post.asArray())
         
         with open(newFolderPath + "negative_posts.csv", "w", encoding="utf8", newline='') as f:
             writer = csv.writer(f)
-            writer.writerow(header)
-            for post in infoObj.negPostIds:
-                writer.writerow(infoObj.postDictionary[post].asArray())
+            if len(infoObj.negPosts) != 0:
+                writer.writerow(infoObj.negPosts[0].getHeader())
+            for post in infoObj.negPosts:
+                writer.writerow(post.asArray())
         
         with open(newFolderPath + "neutral_posts.csv", "w", encoding="utf8", newline='') as f:
             writer = csv.writer(f)
-            writer.writerow(header)
-            for post in infoObj.neutralPostIds:
-                writer.writerow(infoObj.postDictionary[post].asArray())
+            if len(infoObj.neutralPosts) != 0:
+                writer.writerow(infoObj.neutralPosts[0].getHeader())
+            for post in infoObj.neutralPosts:
+                writer.writerow(post.asArray())
+        
+    if infoObj.clusters != []:
+        header = ["Post_ID", "Post_Code", "Owner_ID", "Likes", "Time_Stamp", "Tags", "Caption"]
+        # Make a folder for the clusters called "clusters"
+        if not os.path.exists(newFolderPath + "clusters"):
+            os.makedirs(newFolderPath + "clusters")
+
+        clustersFolderPath = newFolderPath + "clusters/"
+        # Print the posts in each cluster to a .csv file called "cluster_#.csv"
+        for i in range(len(infoObj.clusters)):
+            with open(clustersFolderPath + "cluster_" + str(i+1) + ".csv", "w", encoding="utf8", newline='') as f:
+                writer = csv.writer(f)
+                writer.writerow(header)
+                for postTuple in infoObj.clusters[i]:
+                    writer.writerow(infoObj.postDictionary[postTuple[0]].asArray())
+        
+        # Print the cluster words to .txt files
+        for i in range(len(infoObj.clusters)):
+            with open(clustersFolderPath + "clusterWords_" + str(i+1) + "_words.txt", "w", encoding="utf8") as f:
+                sortedClusterWords = sorted(infoObj.clusterWords[i], key=lambda x: x[1], reverse=True)
+                for wordTuple in sortedClusterWords:
+                    f.write(str(wordTuple[0]) + ": " + str(wordTuple[1]) + "\n")
+
+
+
 
 # start main
 if __name__ == "__main__":
