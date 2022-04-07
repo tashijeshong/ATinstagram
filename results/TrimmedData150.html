@@ -1,0 +1,108 @@
+<html>
+<head>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.16.1/vis.css" type="text/css" />
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.16.1/vis-network.min.js"> </script>
+<center>
+<h1></h1>
+</center>
+
+<!-- <link rel="stylesheet" href="../node_modules/vis/dist/vis.min.css" type="text/css" />
+<script type="text/javascript" src="../node_modules/vis/dist/vis.js"> </script>-->
+
+<style type="text/css">
+
+        #mynetwork {
+            width: 500px;
+            height: 500px;
+            background-color: #ffffff;
+            border: 1px solid lightgray;
+            position: relative;
+            float: left;
+        }
+
+        
+
+        
+
+        
+</style>
+
+</head>
+
+<body>
+<div id = "mynetwork"></div>
+
+
+<script type="text/javascript">
+
+    // initialize global variables.
+    var edges;
+    var nodes;
+    var network; 
+    var container;
+    var options, data;
+
+    
+    // This method is responsible for drawing the graph, returns the drawn network
+    function drawGraph() {
+        var container = document.getElementById('mynetwork');
+        
+        
+
+        // parsing and collecting nodes and edges from the python
+        nodes = new vis.DataSet([{"id": "#appalachiantrail", "label": "#appalachiantrail", "shape": "dot", "size": 10}, {"id": "#thruhike", "label": "#thruhike", "shape": "dot", "size": 10}, {"id": "#hiking", "label": "#hiking", "shape": "dot", "size": 10}, {"id": "#backpacking", "label": "#backpacking", "shape": "dot", "size": 10}, {"id": "#hikertrash", "label": "#hikertrash", "shape": "dot", "size": 10}, {"id": "#optoutside", "label": "#optoutside", "shape": "dot", "size": 10}, {"id": "#thetrek", "label": "#thetrek", "shape": "dot", "size": 10}, {"id": "#trektheat", "label": "#trektheat", "shape": "dot", "size": 10}, {"id": "#atclassof2021", "label": "#atclassof2021", "shape": "dot", "size": 10}, {"id": "#atclassof2019", "label": "#atclassof2019", "shape": "dot", "size": 10}, {"id": "#thruhiker", "label": "#thruhiker", "shape": "dot", "size": 10}, {"id": "#atthruhike", "label": "#atthruhike", "shape": "dot", "size": 10}, {"id": "#whiteblaze", "label": "#whiteblaze", "shape": "dot", "size": 10}, {"id": "#atclassof2020", "label": "#atclassof2020", "shape": "dot", "size": 10}, {"id": "#appalachiantrail2021", "label": "#appalachiantrail2021", "shape": "dot", "size": 10}, {"id": "#georgiatomaine", "label": "#georgiatomaine", "shape": "dot", "size": 10}, {"id": "#thruhiking", "label": "#thruhiking", "shape": "dot", "size": 10}, {"id": "#hike", "label": "#hike", "shape": "dot", "size": 10}, {"id": "#nature", "label": "#nature", "shape": "dot", "size": 10}, {"id": "#adventure", "label": "#adventure", "shape": "dot", "size": 10}, {"id": "#at2021", "label": "#at2021", "shape": "dot", "size": 10}, {"id": "#mountains", "label": "#mountains", "shape": "dot", "size": 10}, {"id": "#atclassof2018", "label": "#atclassof2018", "shape": "dot", "size": 10}, {"id": "#at2020", "label": "#at2020", "shape": "dot", "size": 10}, {"id": "#appalachiantrail2019", "label": "#appalachiantrail2019", "shape": "dot", "size": 10}, {"id": "#withguthook", "label": "#withguthook", "shape": "dot", "size": 10}, {"id": "#nobo", "label": "#nobo", "shape": "dot", "size": 10}, {"id": "#at2019", "label": "#at2019", "shape": "dot", "size": 10}, {"id": "#appalachianmountains", "label": "#appalachianmountains", "shape": "dot", "size": 10}, {"id": "#outdoors", "label": "#outdoors", "shape": "dot", "size": 10}, {"id": "#appalachiantrail2020", "label": "#appalachiantrail2020", "shape": "dot", "size": 10}, {"id": "#hikingadventures", "label": "#hikingadventures", "shape": "dot", "size": 10}, {"id": "#hikersofinstagram", "label": "#hikersofinstagram", "shape": "dot", "size": 10}, {"id": "#womenwhohike", "label": "#womenwhohike", "shape": "dot", "size": 10}, {"id": "#hiker", "label": "#hiker", "shape": "dot", "size": 10}, {"id": "#camping", "label": "#camping", "shape": "dot", "size": 10}, {"id": "#at", "label": "#at", "shape": "dot", "size": 10}, {"id": "#appalachiantrailthruhike", "label": "#appalachiantrailthruhike", "shape": "dot", "size": 10}, {"id": "#atnobo2021", "label": "#atnobo2021", "shape": "dot", "size": 10}, {"id": "#getoutside", "label": "#getoutside", "shape": "dot", "size": 10}, {"id": "#trektheAT", "label": "#trektheAT", "shape": "dot", "size": 10}, {"id": "#explore", "label": "#explore", "shape": "dot", "size": 10}, {"id": "#at2018", "label": "#at2018", "shape": "dot", "size": 10}, {"id": "#hikerlife", "label": "#hikerlife", "shape": "dot", "size": 10}, {"id": "#zpacks", "label": "#zpacks", "shape": "dot", "size": 10}, {"id": "#wanderlust", "label": "#wanderlust", "shape": "dot", "size": 10}, {"id": "#atnobo", "label": "#atnobo", "shape": "dot", "size": 10}, {"id": "#appalachianhikers", "label": "#appalachianhikers", "shape": "dot", "size": 10}, {"id": "#takeahike", "label": "#takeahike", "shape": "dot", "size": 10}, {"id": "#leavenotrace", "label": "#leavenotrace", "shape": "dot", "size": 10}, {"id": "#virginia", "label": "#virginia", "shape": "dot", "size": 10}, {"id": "#appalachiantrailclassof2021", "label": "#appalachiantrailclassof2021", "shape": "dot", "size": 10}, {"id": "#blueridgemountains", "label": "#blueridgemountains", "shape": "dot", "size": 10}, {"id": "#appalachiantrail2018", "label": "#appalachiantrail2018", "shape": "dot", "size": 10}, {"id": "#stillontheat", "label": "#stillontheat", "shape": "dot", "size": 10}, {"id": "#getafterit", "label": "#getafterit", "shape": "dot", "size": 10}, {"id": "#backpackerradio", "label": "#backpackerradio", "shape": "dot", "size": 10}, {"id": "#unlikelyhikers", "label": "#unlikelyhikers", "shape": "dot", "size": 10}, {"id": "#hokaoneone", "label": "#hokaoneone", "shape": "dot", "size": 10}, {"id": "#naturephotography", "label": "#naturephotography", "shape": "dot", "size": 10}, {"id": "#doepicshit", "label": "#doepicshit", "shape": "dot", "size": 10}, {"id": "#photography", "label": "#photography", "shape": "dot", "size": 10}, {"id": "#travel", "label": "#travel", "shape": "dot", "size": 10}, {"id": "#landscapephotography", "label": "#landscapephotography", "shape": "dot", "size": 10}, {"id": "#naturelovers", "label": "#naturelovers", "shape": "dot", "size": 10}, {"id": "#wildcamping", "label": "#wildcamping", "shape": "dot", "size": 10}, {"id": "#landscape", "label": "#landscape", "shape": "dot", "size": 10}, {"id": "#neverstopexploring", "label": "#neverstopexploring", "shape": "dot", "size": 10}, {"id": "#exploremore", "label": "#exploremore", "shape": "dot", "size": 10}, {"id": "#getoutdoors", "label": "#getoutdoors", "shape": "dot", "size": 10}, {"id": "#findyourpark", "label": "#findyourpark", "shape": "dot", "size": 10}, {"id": "#nationalparks", "label": "#nationalparks", "shape": "dot", "size": 10}, {"id": "#keepitwild", "label": "#keepitwild", "shape": "dot", "size": 10}, {"id": "#colorado", "label": "#colorado", "shape": "dot", "size": 10}, {"id": "#wilderness", "label": "#wilderness", "shape": "dot", "size": 10}, {"id": "#choosemountains", "label": "#choosemountains", "shape": "dot", "size": 10}, {"id": "#naturelover", "label": "#naturelover", "shape": "dot", "size": 10}, {"id": "#nationalpark", "label": "#nationalpark", "shape": "dot", "size": 10}, {"id": "#nationalparkgeek", "label": "#nationalparkgeek", "shape": "dot", "size": 10}, {"id": "#photooftheday", "label": "#photooftheday", "shape": "dot", "size": 10}, {"id": "#recreateresponsibly", "label": "#recreateresponsibly", "shape": "dot", "size": 10}, {"id": "#trashtag", "label": "#trashtag", "shape": "dot", "size": 10}, {"id": "#travelphotography", "label": "#travelphotography", "shape": "dot", "size": 10}, {"id": "#hikemoreworryless", "label": "#hikemoreworryless", "shape": "dot", "size": 10}, {"id": "#sunset", "label": "#sunset", "shape": "dot", "size": 10}, {"id": "#wildernessculture", "label": "#wildernessculture", "shape": "dot", "size": 10}, {"id": "#leavenothingbutfootprints", "label": "#leavenothingbutfootprints", "shape": "dot", "size": 10}, {"id": "#thegreatoutdoors", "label": "#thegreatoutdoors", "shape": "dot", "size": 10}, {"id": "#forest", "label": "#forest", "shape": "dot", "size": 10}, {"id": "#lnt", "label": "#lnt", "shape": "dot", "size": 10}, {"id": "#atthruhike2019", "label": "#atthruhike2019", "shape": "dot", "size": 10}, {"id": "#appalachiantrailclassof2020", "label": "#appalachiantrailclassof2020", "shape": "dot", "size": 10}, {"id": "#urbex", "label": "#urbex", "shape": "dot", "size": 10}, {"id": "#takenothingbutpictures", "label": "#takenothingbutpictures", "shape": "dot", "size": 10}, {"id": "#abandoned", "label": "#abandoned", "shape": "dot", "size": 10}]);
+        edges = new vis.DataSet([{"from": "#appalachiantrail", "to": "#thruhike", "weight": 13010}, {"from": "#appalachiantrail", "to": "#hiking", "weight": 11603}, {"from": "#appalachiantrail", "to": "#backpacking", "weight": 11236}, {"from": "#appalachiantrail", "to": "#hikertrash", "weight": 8718}, {"from": "#appalachiantrail", "to": "#optoutside", "weight": 7737}, {"from": "#appalachiantrail", "to": "#thetrek", "weight": 7492}, {"from": "#appalachiantrail", "to": "#trektheat", "weight": 7066}, {"from": "#appalachiantrail", "to": "#atclassof2021", "weight": 5840}, {"from": "#appalachiantrail", "to": "#atclassof2019", "weight": 5752}, {"from": "#appalachiantrail", "to": "#thruhiker", "weight": 5439}, {"from": "#appalachiantrail", "to": "#atthruhike", "weight": 4989}, {"from": "#appalachiantrail", "to": "#whiteblaze", "weight": 4850}, {"from": "#appalachiantrail", "to": "#atclassof2020", "weight": 4716}, {"from": "#appalachiantrail", "to": "#appalachiantrail2021", "weight": 4644}, {"from": "#appalachiantrail", "to": "#georgiatomaine", "weight": 4009}, {"from": "#appalachiantrail", "to": "#thruhiking", "weight": 3989}, {"from": "#appalachiantrail", "to": "#hike", "weight": 3937}, {"from": "#appalachiantrail", "to": "#nature", "weight": 3813}, {"from": "#appalachiantrail", "to": "#adventure", "weight": 3500}, {"from": "#appalachiantrail", "to": "#at2021", "weight": 3463}, {"from": "#appalachiantrail", "to": "#mountains", "weight": 3441}, {"from": "#appalachiantrail", "to": "#atclassof2018", "weight": 3301}, {"from": "#appalachiantrail", "to": "#at2020", "weight": 3199}, {"from": "#appalachiantrail", "to": "#appalachiantrail2019", "weight": 3087}, {"from": "#appalachiantrail", "to": "#withguthook", "weight": 3080}, {"from": "#appalachiantrail", "to": "#nobo", "weight": 3052}, {"from": "#appalachiantrail", "to": "#at2019", "weight": 3040}, {"from": "#appalachiantrail", "to": "#appalachianmountains", "weight": 2989}, {"from": "#appalachiantrail", "to": "#outdoors", "weight": 2862}, {"from": "#appalachiantrail", "to": "#appalachiantrail2020", "weight": 2856}, {"from": "#appalachiantrail", "to": "#hikingadventures", "weight": 2790}, {"from": "#appalachiantrail", "to": "#hikersofinstagram", "weight": 2587}, {"from": "#appalachiantrail", "to": "#womenwhohike", "weight": 2465}, {"from": "#appalachiantrail", "to": "#hiker", "weight": 2333}, {"from": "#appalachiantrail", "to": "#camping", "weight": 2326}, {"from": "#appalachiantrail", "to": "#at", "weight": 2311}, {"from": "#appalachiantrail", "to": "#appalachiantrailthruhike", "weight": 2143}, {"from": "#appalachiantrail", "to": "#atnobo2021", "weight": 2110}, {"from": "#appalachiantrail", "to": "#getoutside", "weight": 2085}, {"from": "#appalachiantrail", "to": "#trektheAT", "weight": 2020}, {"from": "#appalachiantrail", "to": "#explore", "weight": 1978}, {"from": "#appalachiantrail", "to": "#at2018", "weight": 1843}, {"from": "#appalachiantrail", "to": "#hikerlife", "weight": 1786}, {"from": "#appalachiantrail", "to": "#zpacks", "weight": 1769}, {"from": "#appalachiantrail", "to": "#wanderlust", "weight": 1762}, {"from": "#appalachiantrail", "to": "#atnobo", "weight": 1723}, {"from": "#appalachiantrail", "to": "#appalachianhikers", "weight": 1710}, {"from": "#appalachiantrail", "to": "#takeahike", "weight": 1679}, {"from": "#appalachiantrail", "to": "#leavenotrace", "weight": 1595}, {"from": "#appalachiantrail", "to": "#virginia", "weight": 1489}, {"from": "#appalachiantrail", "to": "#appalachiantrailclassof2021", "weight": 1465}, {"from": "#appalachiantrail", "to": "#blueridgemountains", "weight": 1387}, {"from": "#appalachiantrail", "to": "#appalachiantrail2018", "weight": 1366}, {"from": "#appalachiantrail", "to": "#stillontheat", "weight": 1335}, {"from": "#appalachiantrail", "to": "#getafterit", "weight": 1332}, {"from": "#appalachiantrail", "to": "#backpackerradio", "weight": 1327}, {"from": "#appalachiantrail", "to": "#unlikelyhikers", "weight": 1317}, {"from": "#appalachiantrail", "to": "#hokaoneone", "weight": 1316}, {"from": "#appalachiantrail", "to": "#naturephotography", "weight": 1313}, {"from": "#appalachiantrail", "to": "#doepicshit", "weight": 1283}, {"from": "#appalachiantrail", "to": "#photography", "weight": 1278}, {"from": "#thruhike", "to": "#atclassof2021", "weight": 3741}, {"from": "#thruhike", "to": "#atclassof2019", "weight": 3557}, {"from": "#thruhike", "to": "#atclassof2020", "weight": 1908}, {"from": "#thruhike", "to": "#leavenotrace", "weight": 1893}, {"from": "#thruhike", "to": "#atclassof2018", "weight": 1394}, {"from": "#thruhike", "to": "#atnobo2021", "weight": 1293}, {"from": "#hiking", "to": "#leavenotrace", "weight": 9839}, {"from": "#hiking", "to": "#atclassof2020", "weight": 2713}, {"from": "#hiking", "to": "#atclassof2019", "weight": 1967}, {"from": "#hiking", "to": "#atclassof2021", "weight": 1824}, {"from": "#hiking", "to": "#atclassof2018", "weight": 1349}, {"from": "#backpacking", "to": "#leavenotrace", "weight": 3480}, {"from": "#backpacking", "to": "#atclassof2020", "weight": 2753}, {"from": "#backpacking", "to": "#atclassof2021", "weight": 2510}, {"from": "#backpacking", "to": "#atclassof2019", "weight": 2325}, {"from": "#backpacking", "to": "#atclassof2018", "weight": 1544}, {"from": "#leavenotrace", "to": "#nature", "weight": 8382}, {"from": "#leavenotrace", "to": "#optoutside", "weight": 7771}, {"from": "#leavenotrace", "to": "#getoutside", "weight": 6933}, {"from": "#leavenotrace", "to": "#adventure", "weight": 5750}, {"from": "#leavenotrace", "to": "#outdoors", "weight": 5076}, {"from": "#leavenotrace", "to": "#camping", "weight": 4693}, {"from": "#leavenotrace", "to": "#explore", "weight": 4448}, {"from": "#leavenotrace", "to": "#mountains", "weight": 4055}, {"from": "#leavenotrace", "to": "#naturephotography", "weight": 3729}, {"from": "#leavenotrace", "to": "#hikingadventures", "weight": 3660}, {"from": "#leavenotrace", "to": "#hike", "weight": 3644}, {"from": "#leavenotrace", "to": "#travel", "weight": 3508}, {"from": "#leavenotrace", "to": "#wanderlust", "weight": 3368}, {"from": "#leavenotrace", "to": "#landscapephotography", "weight": 2720}, {"from": "#leavenotrace", "to": "#naturelovers", "weight": 2639}, {"from": "#leavenotrace", "to": "#wildcamping", "weight": 2385}, {"from": "#leavenotrace", "to": "#landscape", "weight": 2261}, {"from": "#leavenotrace", "to": "#neverstopexploring", "weight": 2256}, {"from": "#leavenotrace", "to": "#exploremore", "weight": 2103}, {"from": "#leavenotrace", "to": "#photography", "weight": 2057}, {"from": "#leavenotrace", "to": "#hikersofinstagram", "weight": 2042}, {"from": "#leavenotrace", "to": "#getoutdoors", "weight": 2023}, {"from": "#leavenotrace", "to": "#findyourpark", "weight": 1904}, {"from": "#leavenotrace", "to": "#hikertrash", "weight": 1777}, {"from": "#leavenotrace", "to": "#nationalparks", "weight": 1720}, {"from": "#leavenotrace", "to": "#keepitwild", "weight": 1667}, {"from": "#leavenotrace", "to": "#colorado", "weight": 1600}, {"from": "#leavenotrace", "to": "#wilderness", "weight": 1598}, {"from": "#leavenotrace", "to": "#choosemountains", "weight": 1558}, {"from": "#leavenotrace", "to": "#naturelover", "weight": 1541}, {"from": "#leavenotrace", "to": "#nationalpark", "weight": 1513}, {"from": "#leavenotrace", "to": "#nationalparkgeek", "weight": 1492}, {"from": "#leavenotrace", "to": "#photooftheday", "weight": 1484}, {"from": "#leavenotrace", "to": "#recreateresponsibly", "weight": 1476}, {"from": "#leavenotrace", "to": "#trashtag", "weight": 1461}, {"from": "#leavenotrace", "to": "#womenwhohike", "weight": 1446}, {"from": "#leavenotrace", "to": "#travelphotography", "weight": 1445}, {"from": "#leavenotrace", "to": "#hikemoreworryless", "weight": 1412}, {"from": "#leavenotrace", "to": "#sunset", "weight": 1399}, {"from": "#leavenotrace", "to": "#wildernessculture", "weight": 1382}, {"from": "#leavenotrace", "to": "#leavenothingbutfootprints", "weight": 1355}, {"from": "#leavenotrace", "to": "#thegreatoutdoors", "weight": 1325}, {"from": "#leavenotrace", "to": "#forest", "weight": 1294}, {"from": "#leavenotrace", "to": "#lnt", "weight": 1284}, {"from": "#hikertrash", "to": "#atclassof2019", "weight": 2486}, {"from": "#hikertrash", "to": "#atclassof2021", "weight": 1961}, {"from": "#hikertrash", "to": "#atclassof2018", "weight": 1423}, {"from": "#optoutside", "to": "#atclassof2019", "weight": 2189}, {"from": "#optoutside", "to": "#atclassof2018", "weight": 1531}, {"from": "#thetrek", "to": "#atclassof2019", "weight": 2029}, {"from": "#thetrek", "to": "#atclassof2020", "weight": 1876}, {"from": "#trektheat", "to": "#atclassof2019", "weight": 2638}, {"from": "#trektheat", "to": "#atclassof2020", "weight": 1826}, {"from": "#atclassof2021", "to": "#appalachiantrail2021", "weight": 3629}, {"from": "#atclassof2021", "to": "#at2021", "weight": 3054}, {"from": "#atclassof2021", "to": "#thruhiker", "weight": 1660}, {"from": "#atclassof2021", "to": "#atthruhike", "weight": 1658}, {"from": "#atclassof2021", "to": "#thruhiking", "weight": 1425}, {"from": "#atclassof2021", "to": "#georgiatomaine", "weight": 1358}, {"from": "#atclassof2019", "to": "#appalachiantrail2019", "weight": 2790}, {"from": "#atclassof2019", "to": "#at2019", "weight": 2754}, {"from": "#atclassof2019", "to": "#atthruhike", "weight": 1686}, {"from": "#atclassof2019", "to": "#atthruhike2019", "weight": 1401}, {"from": "#whiteblaze", "to": "#atclassof2020", "weight": 2123}, {"from": "#atclassof2020", "to": "#at2020", "weight": 3513}, {"from": "#atclassof2020", "to": "#appalachiantrail2020", "weight": 2716}, {"from": "#atclassof2020", "to": "#stillontheat", "weight": 1599}, {"from": "#atclassof2020", "to": "#appalachiantrailclassof2020", "weight": 1310}, {"from": "#appalachiantrail2021", "to": "#atnobo2021", "weight": 1294}, {"from": "#atclassof2018", "to": "#at2018", "weight": 1832}, {"from": "#leavenothingbutfootprints", "to": "#urbex", "weight": 1581}, {"from": "#leavenothingbutfootprints", "to": "#takenothingbutpictures", "weight": 1438}, {"from": "#leavenothingbutfootprints", "to": "#abandoned", "weight": 1364}]);
+
+        // adding nodes and edges to the graph
+        data = {nodes: nodes, edges: edges};
+
+        var options = {
+    "configure": {
+        "enabled": false
+    },
+    "edges": {
+        "color": {
+            "inherit": true
+        },
+        "smooth": {
+            "enabled": false,
+            "type": "continuous"
+        }
+    },
+    "interaction": {
+        "dragNodes": true,
+        "hideEdgesOnDrag": false,
+        "hideNodesOnDrag": false
+    },
+    "physics": {
+        "enabled": true,
+        "stabilization": {
+            "enabled": true,
+            "fit": true,
+            "iterations": 1000,
+            "onlyDynamicEdges": false,
+            "updateInterval": 50
+        }
+    }
+};
+        
+        
+
+        
+
+        network = new vis.Network(container, data, options);
+	 
+        
+
+
+        
+
+        return network;
+
+    }
+
+    drawGraph();
+
+</script>
+</body>
+</html>

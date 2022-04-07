@@ -1,0 +1,108 @@
+<html>
+<head>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.16.1/vis.css" type="text/css" />
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.16.1/vis-network.min.js"> </script>
+<center>
+<h1></h1>
+</center>
+
+<!-- <link rel="stylesheet" href="../node_modules/vis/dist/vis.min.css" type="text/css" />
+<script type="text/javascript" src="../node_modules/vis/dist/vis.js"> </script>-->
+
+<style type="text/css">
+
+        #mynetwork {
+            width: 500px;
+            height: 500px;
+            background-color: #ffffff;
+            border: 1px solid lightgray;
+            position: relative;
+            float: left;
+        }
+
+        
+
+        
+
+        
+</style>
+
+</head>
+
+<body>
+<div id = "mynetwork"></div>
+
+
+<script type="text/javascript">
+
+    // initialize global variables.
+    var edges;
+    var nodes;
+    var network; 
+    var container;
+    var options, data;
+
+    
+    // This method is responsible for drawing the graph, returns the drawn network
+    function drawGraph() {
+        var container = document.getElementById('mynetwork');
+        
+        
+
+        // parsing and collecting nodes and edges from the python
+        nodes = new vis.DataSet([{"id": "#leavenotrace", "label": "#leavenotrace", "shape": "dot", "size": 10}, {"id": "#hiking", "label": "#hiking", "shape": "dot", "size": 10}, {"id": "#nature", "label": "#nature", "shape": "dot", "size": 10}, {"id": "#optoutside", "label": "#optoutside", "shape": "dot", "size": 10}, {"id": "#getoutside", "label": "#getoutside", "shape": "dot", "size": 10}, {"id": "#adventure", "label": "#adventure", "shape": "dot", "size": 10}, {"id": "#leavenothingbutfootprints", "label": "#leavenothingbutfootprints", "shape": "dot", "size": 10}, {"id": "#appalachiantrail", "label": "#appalachiantrail", "shape": "dot", "size": 10}, {"id": "#thruhike", "label": "#thruhike", "shape": "dot", "size": 10}, {"id": "#backpacking", "label": "#backpacking", "shape": "dot", "size": 10}, {"id": "#hikertrash", "label": "#hikertrash", "shape": "dot", "size": 10}, {"id": "#urbex", "label": "#urbex", "shape": "dot", "size": 10}, {"id": "#abandoned", "label": "#abandoned", "shape": "dot", "size": 10}, {"id": "#takenothingbutpictures", "label": "#takenothingbutpictures", "shape": "dot", "size": 10}, {"id": "#lostplaces", "label": "#lostplaces", "shape": "dot", "size": 10}]);
+        edges = new vis.DataSet([{"from": "#leavenotrace", "to": "#hiking", "weight": 10949}, {"from": "#leavenotrace", "to": "#nature", "weight": 9564}, {"from": "#leavenotrace", "to": "#optoutside", "weight": 8873}, {"from": "#leavenotrace", "to": "#getoutside", "weight": 7548}, {"from": "#leavenotrace", "to": "#adventure", "weight": 6096}, {"from": "#leavenotrace", "to": "#leavenothingbutfootprints", "weight": 1385}, {"from": "#hiking", "to": "#appalachiantrail", "weight": 12761}, {"from": "#optoutside", "to": "#appalachiantrail", "weight": 8273}, {"from": "#appalachiantrail", "to": "#thruhike", "weight": 13883}, {"from": "#appalachiantrail", "to": "#backpacking", "weight": 12259}, {"from": "#appalachiantrail", "to": "#hikertrash", "weight": 9273}, {"from": "#leavenothingbutfootprints", "to": "#urbex", "weight": 2237}, {"from": "#leavenothingbutfootprints", "to": "#abandoned", "weight": 2014}, {"from": "#leavenothingbutfootprints", "to": "#takenothingbutpictures", "weight": 1462}, {"from": "#leavenothingbutfootprints", "to": "#lostplaces", "weight": 1370}]);
+
+        // adding nodes and edges to the graph
+        data = {nodes: nodes, edges: edges};
+
+        var options = {
+    "configure": {
+        "enabled": false
+    },
+    "edges": {
+        "color": {
+            "inherit": true
+        },
+        "smooth": {
+            "enabled": false,
+            "type": "continuous"
+        }
+    },
+    "interaction": {
+        "dragNodes": true,
+        "hideEdgesOnDrag": false,
+        "hideNodesOnDrag": false
+    },
+    "physics": {
+        "enabled": true,
+        "stabilization": {
+            "enabled": true,
+            "fit": true,
+            "iterations": 1000,
+            "onlyDynamicEdges": false,
+            "updateInterval": 50
+        }
+    }
+};
+        
+        
+
+        
+
+        network = new vis.Network(container, data, options);
+	 
+        
+
+
+        
+
+        return network;
+
+    }
+
+    drawGraph();
+
+</script>
+</body>
+</html>
